@@ -193,6 +193,9 @@ namespace UCCreator
                 integer_ADD_HeadDiam = (NXOpen.BlockStyler.IntegerBlock)theDialog.TopBlock.FindBlock("integer_ADD_HeadDiam");
                 integer_ADD_MaxConnLength = (NXOpen.BlockStyler.IntegerBlock)theDialog.TopBlock.FindBlock("integer_ADD_MaxConnLength");
                 TB_ADD_Material = (NXOpen.BlockStyler.StringBlock)theDialog.TopBlock.FindBlock("TB_ADD_Material");
+
+                tree_control0.Width = 500;
+
                 //------------------------------------------------------------------------------
                 //Registration of Treelist specific callbacks
                 //------------------------------------------------------------------------------
@@ -282,6 +285,30 @@ namespace UCCreator
                 tree_control0.InsertNode(allNodes[0], null, null, Tree.NodeInsertOption.First);
                 tree_control0.InsertNode(allNodes[1], null, null, Tree.NodeInsertOption.Last);
                 tree_control0.InsertNode(allNodes[2], null, null, Tree.NodeInsertOption.Last);
+
+                allNodes[0].SetColumnDisplayText(0, "M10X90");
+                allNodes[0].SetColumnDisplayText(1, "10");
+                allNodes[0].SetColumnDisplayText(2, "12");
+                allNodes[0].SetColumnDisplayText(3, "90");
+                allNodes[0].SetColumnDisplayText(4, "Aluminum_1942");
+
+                allNodes[1].SetColumnDisplayText(0, "M10X80");
+                allNodes[1].SetColumnDisplayText(1, "10");
+                allNodes[1].SetColumnDisplayText(2, "12");
+                allNodes[1].SetColumnDisplayText(3, "80");
+                allNodes[1].SetColumnDisplayText(4, "Aluminum_1942");
+
+                allNodes[2].SetColumnDisplayText(0, "M12X50");
+                allNodes[2].SetColumnDisplayText(1, "12");
+                allNodes[2].SetColumnDisplayText(2, "15");
+                allNodes[2].SetColumnDisplayText(3, "50");
+                allNodes[2].SetColumnDisplayText(4, "Aluminum_1942");
+
+                NXOpen.BlockStyler.TreeListMenu treeMenu = tree_control0.CreateMenu();
+                treeMenu.AddMenuItem(0, "Add");
+                treeMenu.AddMenuItem(1, "Delete");
+                tree_control0.SetMenu(treeMenu);
+                tree_control0.Redraw(true);
             }
             catch (Exception ex)
             {
