@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using NXOpen;
@@ -167,6 +168,9 @@ namespace UCCreator
         {
             if (theDialog != null)
             {
+                // Store current Tree List content to use in next session
+                //StoreUnivConnList();
+
                 theDialog.Dispose();
                 theDialog = null;
             }
@@ -346,7 +350,11 @@ namespace UCCreator
                 }
                 else if (block == button_CREATE)
                 {
-                    //---------Enter your code here-----------
+                    // ...
+
+
+                    // Store current Tree List content to use in next session
+                    StoreUnivConnList();
                 }
             }
             catch (Exception ex)
@@ -598,6 +606,100 @@ namespace UCCreator
                     //    //newNode.SetColumnDisplayText(j, targRange.Cells[i, j].Value);
                     //}
                 }
+
+                //cleanup
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+
+                //release com objects to fully kill excel process from running in the background
+                Marshal.ReleaseComObject(targRange);
+                Marshal.ReleaseComObject(xlWorksheet);
+
+                //close and release
+                xlWorkbook.Close();
+                Marshal.ReleaseComObject(xlWorkbook);
+
+                //quit and release
+                xlApp.Quit();
+                Marshal.ReleaseComObject(xlApp);
+            }
+            catch (Exception e)
+            {
+                lw.WriteFullline("!ERROR occurred: " + Environment.NewLine +
+                    e.ToString());
+            }
+        }
+
+
+        private void StoreUnivConnList()
+        {
+            try
+            {
+                lw.WriteFullline(Environment.NewLine +
+                    " ----------------------------------------- " + Environment.NewLine +
+                    "| SAVE BOLT DEFINITION LIST FOR LATER USE |" + Environment.NewLine +
+                    " ----------------------------------------- ");
+
+                // Get target Excel file path
+                string filePath = System.Reflection.Assembly.GetExecutingAssembly().CodeBase;
+                filePath = filePath.Remove(filePath.LastIndexOf("/")) + "\\UCCreator_SavedBoltDefinitions.xlsx";
+                lw.WriteFullline("Target file path :  " + filePath);
+
+                // Create new Excel file
+                Microsoft.Office.Interop.Excel.Application xlApp = new Microsoft.Office.Interop.Excel.Application();
+                Microsoft.Office.Interop.Excel.Workbook xlWorkbook = xlApp.Workbooks.Add();
+                Microsoft.Office.Interop.Excel.Worksheet xlWorksheet = xlWorkbook.Sheets[1];
+
+                // Populate with Node List content
+                lw.WriteFullline("Write content...");
+                // Headers
+                xlWorksheet.Cells[1, 1].Value = "Name";
+                xlWorksheet.Cells[1, 2].Value = "Shank Diameter [mm]";
+                xlWorksheet.Cells[1, 3].Value = "Head Diameter [mm]";
+                xlWorksheet.Cells[1, 4].Value = "Maximum Connection Length [mm]";
+                xlWorksheet.Cells[1, 5].Value = "Material";
+
+                lw.WriteFullline("   Added Headers");
+
+                // Content Rows
+                int i = 2;
+                foreach (NXOpen.BlockStyler.Node node in allNodes)
+                {
+                    xlWorksheet.Cells[i, 1].Value = node.GetColumnDisplayText(0);
+                    xlWorksheet.Cells[i, 2].Value = node.GetColumnDisplayText(1);
+                    xlWorksheet.Cells[i, 3].Value = node.GetColumnDisplayText(2);
+                    xlWorksheet.Cells[i, 4].Value = node.GetColumnDisplayText(3);
+                    xlWorksheet.Cells[i, 5].Value = node.GetColumnDisplayText(4);
+
+                    lw.WriteFullline("   Added Node " + (i - 1).ToString());
+
+                    i++;
+                }
+
+
+                // Save Excel file
+                if (File.Exists(filePath))
+                {
+                    File.Delete(filePath);
+                }
+                xlWorkbook.SaveAs(filePath);
+
+                lw.WriteFullline("Saved Excel file");
+
+                //cleanup
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+
+                //release com objects to fully kill excel process from running in the background
+                Marshal.ReleaseComObject(xlWorksheet);
+
+                //close and release
+                xlWorkbook.Close();
+                Marshal.ReleaseComObject(xlWorkbook);
+
+                //quit and release
+                xlApp.Quit();
+                Marshal.ReleaseComObject(xlApp);
             }
             catch (Exception e)
             {
