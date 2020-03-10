@@ -35,6 +35,9 @@
   <PropertyGroup>
     <ApplicationIcon>IMAGES\Logo_UnivConnCreator.ico</ApplicationIcon>
   </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject>UCCreator.UniversalConnectionCreator</StartupObject>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="NXOpen">
       <HintPath>C:\Program Files\Siemens\NX1899\NXBIN\managed\NXOpen.dll</HintPath>
@@ -61,8 +64,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="MODELS\BoltDefinition.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="UniversalConnectionCreator.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
