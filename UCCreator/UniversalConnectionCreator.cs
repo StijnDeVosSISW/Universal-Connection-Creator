@@ -30,6 +30,11 @@ namespace UCCreator
 
         private List<NXOpen.BlockStyler.Node> allNodes = new List<Node>();
         private List<MODELS.BoltDefinition> allBoltDefinitions = new List<MODELS.BoltDefinition>();
+        private enum MenuID
+        {
+            AddNode,
+            DeleteNode
+        };
 
         //------------------------------------------------------------------------------
         //Constructor for NX Styler class
@@ -194,7 +199,7 @@ namespace UCCreator
                 integer_ADD_MaxConnLength = (NXOpen.BlockStyler.IntegerBlock)theDialog.TopBlock.FindBlock("integer_ADD_MaxConnLength");
                 TB_ADD_Material = (NXOpen.BlockStyler.StringBlock)theDialog.TopBlock.FindBlock("TB_ADD_Material");
 
-                tree_control0.Width = 500;
+                tree_control0.Height = 500;
 
                 //------------------------------------------------------------------------------
                 //Registration of Treelist specific callbacks
@@ -209,7 +214,7 @@ namespace UCCreator
 
                 //tree_control0.SetOnPreSelectHandler(new NXOpen.BlockStyler.Tree.OnPreSelectCallback(OnPreSelectcallback));
 
-                //tree_control0.SetOnSelectHandler(new NXOpen.BlockStyler.Tree.OnSelectCallback(OnSelectcallback));
+                tree_control0.SetOnSelectHandler(new NXOpen.BlockStyler.Tree.OnSelectCallback(OnSelectcallback));
 
                 //tree_control0.SetOnStateChangeHandler(new NXOpen.BlockStyler.Tree.OnStateChangeCallback(OnStateChangecallback));
 
@@ -219,23 +224,23 @@ namespace UCCreator
 
                 //tree_control0.SetStateIconNameHandler(new NXOpen.BlockStyler.Tree.StateIconNameCallback(StateIconNameCallback));
 
-                //tree_control0.SetOnBeginLabelEditHandler(new NXOpen.BlockStyler.Tree.OnBeginLabelEditCallback(OnBeginLabelEditCallback));
+                tree_control0.SetOnBeginLabelEditHandler(new NXOpen.BlockStyler.Tree.OnBeginLabelEditCallback(OnBeginLabelEditCallback));
 
-                //tree_control0.SetOnEndLabelEditHandler(new NXOpen.BlockStyler.Tree.OnEndLabelEditCallback(OnEndLabelEditCallback));
+                tree_control0.SetOnEndLabelEditHandler(new NXOpen.BlockStyler.Tree.OnEndLabelEditCallback(OnEndLabelEditCallback));
 
-                //tree_control0.SetOnEditOptionSelectedHandler(new NXOpen.BlockStyler.Tree.OnEditOptionSelectedCallback(OnEditOptionSelectedCallback));
+                tree_control0.SetOnEditOptionSelectedHandler(new NXOpen.BlockStyler.Tree.OnEditOptionSelectedCallback(OnEditOptionSelectedCallback));
 
-                //tree_control0.SetAskEditControlHandler(new NXOpen.BlockStyler.Tree.AskEditControlCallback(AskEditControlCallback));
+                tree_control0.SetAskEditControlHandler(new NXOpen.BlockStyler.Tree.AskEditControlCallback(AskEditControlCallback));
 
-                //tree_control0.SetOnMenuHandler(new NXOpen.BlockStyler.Tree.OnMenuCallback(OnMenuCallback));;
+                tree_control0.SetOnMenuHandler(new NXOpen.BlockStyler.Tree.OnMenuCallback(OnMenuCallback));
 
-                //tree_control0.SetOnMenuSelectionHandler(new NXOpen.BlockStyler.Tree.OnMenuSelectionCallback(OnMenuSelectionCallback));;
+                tree_control0.SetOnMenuSelectionHandler(new NXOpen.BlockStyler.Tree.OnMenuSelectionCallback(OnMenuSelectionCallback));
 
-                //tree_control0.SetIsDropAllowedHandler(new NXOpen.BlockStyler.Tree.IsDropAllowedCallback(IsDropAllowedCallback));;
+                tree_control0.SetIsDropAllowedHandler(new NXOpen.BlockStyler.Tree.IsDropAllowedCallback(IsDropAllowedCallback));
 
-                //tree_control0.SetIsDragAllowedHandler(new NXOpen.BlockStyler.Tree.IsDragAllowedCallback(IsDragAllowedCallback));;
+                tree_control0.SetIsDragAllowedHandler(new NXOpen.BlockStyler.Tree.IsDragAllowedCallback(IsDragAllowedCallback));
 
-                //tree_control0.SetOnDropHandler(new NXOpen.BlockStyler.Tree.OnDropCallback(OnDropCallback));;
+                tree_control0.SetOnDropHandler(new NXOpen.BlockStyler.Tree.OnDropCallback(OnDropCallback));
 
                 //tree_control0.SetOnDropMenuHandler(new NXOpen.BlockStyler.Tree.OnDropMenuCallback(OnDropMenuCallback));
 
@@ -268,7 +273,7 @@ namespace UCCreator
             try
             {
                 // Intialize GUI
-                
+
 
                 // Initialize Tree Control (List of predefined Universal Bolt Connections)
                 int default_width = 150;
@@ -304,11 +309,6 @@ namespace UCCreator
                 allNodes[2].SetColumnDisplayText(3, "50");
                 allNodes[2].SetColumnDisplayText(4, "Aluminum_1942");
 
-                NXOpen.BlockStyler.TreeListMenu treeMenu = tree_control0.CreateMenu();
-                treeMenu.AddMenuItem(0, "Add");
-                treeMenu.AddMenuItem(1, "Delete");
-                tree_control0.SetMenu(treeMenu);
-                tree_control0.Redraw(true);
             }
             catch (Exception ex)
             {
@@ -430,9 +430,10 @@ namespace UCCreator
         //{
         //}
 
-        //public void OnSelectcallback(NXOpen.BlockStyler.Tree tree, NXOpen.BlockStyler.Node node, int columnID, bool Selected)
-        //{
-        //}
+        public void OnSelectcallback(NXOpen.BlockStyler.Tree tree, NXOpen.BlockStyler.Node node, int columnID, bool Selected)
+        {
+            
+        }
 
         //public void OnStateChangecallback(NXOpen.BlockStyler.Tree tree, NXOpen.BlockStyler.Node node, int State)
         //{
@@ -450,41 +451,102 @@ namespace UCCreator
         //{
         //}
 
-        //public Tree.BeginLabelEditState OnBeginLabelEditCallback(NXOpen.BlockStyler.Tree tree, NXOpen.BlockStyler.Node node, int columnID)
-        //{
-        //}
+        public Tree.BeginLabelEditState OnBeginLabelEditCallback(NXOpen.BlockStyler.Tree tree, NXOpen.BlockStyler.Node node, int columnID)
+        {
+            return Tree.BeginLabelEditState.Allow;
+        }
 
-        //public Tree.EndLabelEditState OnEndLabelEditCallback(NXOpen.BlockStyler.Tree tree, NXOpen.BlockStyler.Node node, int columnID, string editedText)
-        //{
-        //}
+        public Tree.EndLabelEditState OnEndLabelEditCallback(NXOpen.BlockStyler.Tree tree, NXOpen.BlockStyler.Node node, int columnID, string editedText)
+        {
+            return Tree.EndLabelEditState.AcceptText;
+        }
 
-        //public Tree.EditControlOption OnEditOptionSelectedCallback(NXOpen.BlockStyler.Tree tree, NXOpen.BlockStyler.Node node, int columnID, int selectedOptionID, string selectedOptionText, Tree.ControlType type)
-        //{
-        //}
+        public Tree.EditControlOption OnEditOptionSelectedCallback(NXOpen.BlockStyler.Tree tree, NXOpen.BlockStyler.Node node, int columnID, int selectedOptionID, string selectedOptionText, Tree.ControlType type)
+        {
+            Tree.EditControlOption OnEditOptionSelected = NXOpen.BlockStyler.Tree.EditControlOption.Accept;
+            return OnEditOptionSelected;
+        }
 
-        //public Tree.ControlType AskEditControlCallback(NXOpen.BlockStyler.Tree tree, NXOpen.BlockStyler.Node node, int columnID)
-        //{
-        //}
+        public Tree.ControlType AskEditControlCallback(NXOpen.BlockStyler.Tree tree, NXOpen.BlockStyler.Node node, int columnID)
+        {
+            return Tree.ControlType.ComboBox;
+        }
 
-        //public void OnMenuCallback(NXOpen.BlockStyler.Tree tree, NXOpen.BlockStyler.Node node, int columnID)
-        //{
-        //}
+        public void OnMenuCallback(NXOpen.BlockStyler.Tree tree, NXOpen.BlockStyler.Node node, int columnID)
+        {
+            NXOpen.BlockStyler.TreeListMenu treeMenu = tree.CreateMenu();
+            treeMenu.AddMenuItem((int)MenuID.DeleteNode, "Delete");
+            treeMenu.AddSeparator();
+            treeMenu.AddMenuItem((int)MenuID.AddNode, "Add new Bolt Definition below");
+            tree_control0.SetMenu(treeMenu);
+            treeMenu.Dispose();
+        }
 
-        //public void OnMenuSelectionCallback(NXOpen.BlockStyler.Tree tree, NXOpen.BlockStyler.Node node, int menuItemID)
-        //{
-        //}
+        public void OnMenuSelectionCallback(NXOpen.BlockStyler.Tree tree, NXOpen.BlockStyler.Node node, int menuItemID)
+        {
+            switch (menuItemID)
+            {
+                case (int)MenuID.DeleteNode:
+                    tree.DeleteNode(node);
+                    //allNodes.RemoveAt(tree.)
+                    break;
 
-        //public Node.DropType IsDropAllowedCallback(NXOpen.BlockStyler.Tree tree, NXOpen.BlockStyler.Node node, int columnID, NXOpen.BlockStyler.Node targetNode, int targetColumnID)
-        //{
-        //}
+                case (int)MenuID.AddNode:
+                    NXOpen.BlockStyler.Node newNode = tree_control0.CreateNode("<name>");
+                    //allNodes.Add(tree_control0.CreateNode("test3"));
+                    tree_control0.InsertNode(newNode, null, node, Tree.NodeInsertOption.First);
 
-        //public Node.DragType IsDragAllowedCallback(NXOpen.BlockStyler.Tree tree, NXOpen.BlockStyler.Node node, int columnID)
-        //{
-        //}
+                    newNode.SetColumnDisplayText(0, "<name>");
+                    newNode.SetColumnDisplayText(1, "<shank diameter>");
+                    newNode.SetColumnDisplayText(2, "<head diameter>");
+                    newNode.SetColumnDisplayText(3, "<max connection length>");
+                    newNode.SetColumnDisplayText(4, "<material name>");
+                    break;
 
-        //public bool OnDropCallback(NXOpen.BlockStyler.Tree tree, NXOpen.BlockStyler.Node[] node, int columnID, NXOpen.BlockStyler.Node targetNode, int targetColumnID, Node.DropType dropType, int dropMenuItemId)
-        //{
-        //}
+                default:
+                    break;
+            }
+        }
+
+        public Node.DropType IsDropAllowedCallback(NXOpen.BlockStyler.Tree tree, NXOpen.BlockStyler.Node node, int columnID, NXOpen.BlockStyler.Node targetNode, int targetColumnID)
+        {
+            return Node.DropType.After;
+        }
+
+        public Node.DragType IsDragAllowedCallback(NXOpen.BlockStyler.Tree tree, NXOpen.BlockStyler.Node node, int columnID)
+        {
+            return Node.DragType.All;
+        }
+
+        public bool OnDropCallback(NXOpen.BlockStyler.Tree tree, NXOpen.BlockStyler.Node[] node, int columnID, NXOpen.BlockStyler.Node targetNode, int targetColumnID, Node.DropType dropType, int dropMenuItemId)
+        {
+            switch (dropType)
+            {
+                case Node.DropType.None:
+                    break;
+                case Node.DropType.On:
+                    break;
+                case Node.DropType.Before:
+                    break;
+                case Node.DropType.After:
+                    NXOpen.BlockStyler.Node movedNode = tree.CreateNode("new");
+                    tree.InsertNode(movedNode, null, targetNode, Tree.NodeInsertOption.First);
+                    movedNode.SetColumnDisplayText(0, node[0].GetColumnDisplayText(0));
+                    movedNode.SetColumnDisplayText(1, node[0].GetColumnDisplayText(1));
+                    movedNode.SetColumnDisplayText(2, node[0].GetColumnDisplayText(2));
+                    movedNode.SetColumnDisplayText(3, node[0].GetColumnDisplayText(3));
+                    movedNode.SetColumnDisplayText(4, node[0].GetColumnDisplayText(4));
+
+                    tree.DeleteNode(node[0]);
+                    
+                    break;
+                case Node.DropType.BeforeAndAfter:
+                    break;
+                default:
+                    break;
+            }
+            return true;
+        }
 
         //public void OnDropMenuCallback(NXOpen.BlockStyler.Tree tree, NXOpen.BlockStyler.Node node, int columnID, NXOpen.BlockStyler.Node targetNode, int targetColumnID)
         //{
