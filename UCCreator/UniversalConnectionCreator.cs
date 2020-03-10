@@ -14,6 +14,7 @@ namespace UCCreator
         //class members
         private static Session theSession = null;
         private static UI theUI = null;
+        private static ListingWindow lw = null;
         private string theDlxFileName;
         private NXOpen.BlockStyler.BlockDialog theDialog;
         private NXOpen.BlockStyler.Group group0;// Block type: Group
@@ -42,6 +43,7 @@ namespace UCCreator
             {
                 theSession = Session.GetSession();
                 theUI = UI.GetUI();
+                lw = theSession.ListingWindow;
                 theDlxFileName = "UniversalConnectionCreator.dlx";
                 theDialog = theUI.CreateDialog(theDlxFileName);
                 theDialog.AddUpdateHandler(new NXOpen.BlockStyler.BlockDialog.Update(update_cb));
@@ -253,8 +255,19 @@ namespace UCCreator
         {
             try
             {
-                // Intialize GUI
-                
+                // Initialize ListingWindow
+                lw.WriteFullline(
+                " ------------------------------ " + Environment.NewLine +
+                " ------------------------------ " + Environment.NewLine +
+                "| UNIVERSAL CONNECTION CREATOR |" + Environment.NewLine +
+                " ------------------------------ " + Environment.NewLine +
+                " ------------------------------ " + Environment.NewLine);
+
+                lw.Open();
+
+
+                // Initialize GUI
+                nativeFileBrowser0.Path = "";
 
                 // Initialize Tree Control (List of predefined Universal Bolt Connections)
                 int default_width = 150;
@@ -346,7 +359,10 @@ namespace UCCreator
                 }
                 else if (block == button_IMPORT)
                 {
-                    //---------Enter your code here-----------
+                    if (nativeFileBrowser0.Path != "" && File.Exists(nativeFileBrowser0.Path))
+                    {
+                        ImportDefsFromExcel(nativeFileBrowser0.Path);
+                    }
                 }
                 else if (block == button_CREATE)
                 {
@@ -461,13 +477,14 @@ namespace UCCreator
             {
                 case (int)MenuID.DeleteNode:
                     tree.DeleteNode(node);
-                    //allNodes.RemoveAt(tree.)
+                    allNodes.Remove(node);
                     break;
 
                 case (int)MenuID.AddNode:
                     NXOpen.BlockStyler.Node newNode = tree_control0.CreateNode("<name>");
-                    //allNodes.Add(tree_control0.CreateNode("test3"));
+
                     tree_control0.InsertNode(newNode, null, node, Tree.NodeInsertOption.First);
+                    allNodes.Insert(allNodes.IndexOf(node) + 1, newNode);
 
                     newNode.SetColumnDisplayText(0, "<name>");
                     newNode.SetColumnDisplayText(1, "<shank diameter>");
@@ -503,14 +520,19 @@ namespace UCCreator
                     break;
                 case Node.DropType.After:
                     NXOpen.BlockStyler.Node movedNode = tree.CreateNode("new");
+
                     tree.InsertNode(movedNode, null, targetNode, Tree.NodeInsertOption.First);
+
                     movedNode.SetColumnDisplayText(0, node[0].GetColumnDisplayText(0));
                     movedNode.SetColumnDisplayText(1, node[0].GetColumnDisplayText(1));
                     movedNode.SetColumnDisplayText(2, node[0].GetColumnDisplayText(2));
                     movedNode.SetColumnDisplayText(3, node[0].GetColumnDisplayText(3));
                     movedNode.SetColumnDisplayText(4, node[0].GetColumnDisplayText(4));
 
+                    allNodes.Insert(allNodes.IndexOf(node[0]), movedNode);
+
                     tree.DeleteNode(node[0]);
+                    allNodes.Remove(node[0]);
                     
                     break;
                 case Node.DropType.BeforeAndAfter:
@@ -556,5 +578,72 @@ namespace UCCreator
             }
             return plist;
         }
+
+
+        #region CUSTOM METHODS
+        private void ImportDefsFromExcel(string filePath)
+        {
+            try
+            {
+                lw.WriteFullline(Environment.NewLine +
+                    " ----------------------------------------- " + Environment.NewLine +
+                    "| IMPORT BOLT DEFINITIONS FROM EXCEL FILE |" + Environment.NewLine +
+                    " ----------------------------------------- ");
+
+                lw.WriteFullline("Input Excel file  :  " + filePath);
+
+                // Clear all existing nodes and BoltDefinition objects
+                foreach (NXOpen.BlockStyler.Node myNode in allNodes)
+                {
+                    tree_control0.DeleteNode(myNode);
+                }
+                allNodes.Clear();
+
+                lw.WriteFullline(Environment.NewLine + "Delete existing Bolt Definitions :  SUCCESS");
+
+                // Create COM objects to use Excel to read the input Excel file
+                Microsoft.Office.Interop.Excel.Application xlApp = new Microsoft.Office.Interop.Excel.Application();
+                Microsoft.Office.Interop.Excel.Workbook xlWorkbook = xlApp.Workbooks.Open(filePath);
+                Microsoft.Office.Interop.Excel.Worksheet xlWorksheet = xlWorkbook.Sheets[1];
+                Microsoft.Office.Interop.Excel.Range targRange = xlWorksheet.UsedRange;
+
+                // Extract each BoltDefinition object from Used Range of Excel sheet
+                // -> start at i = 2, because first row in Excel sheet are the column headers! (Excel is NOT zero-based)
+                for (int i = 2; i < (targRange.Rows.Count+1); i++)
+                {
+                    lw.WriteFullline(Environment.NewLine + "IMPORTING: Bolt Definition " + (i - 1).ToString());
+                    // Add new node to Tree List
+                    NXOpen.BlockStyler.Node newNode = tree_control0.CreateNode("<new>");
+                    tree_control0.InsertNode(newNode, null, null, Tree.NodeInsertOption.Last);
+
+                    newNode.SetColumnDisplayText(0, (string)targRange.Cells[i, 1].Text);
+                    newNode.SetColumnDisplayText(1, (string)targRange.Cells[i, 2].Text);
+                    newNode.SetColumnDisplayText(2, (string)targRange.Cells[i, 3].Text);
+                    newNode.SetColumnDisplayText(3, (string)targRange.Cells[i, 4].Text);
+                    newNode.SetColumnDisplayText(4, (string)targRange.Cells[i, 5].Text);
+
+                    allNodes.Add(newNode);
+
+                    lw.WriteFullline("   New node created with:" + Environment.NewLine +
+                        "   Name                           = " + newNode.GetColumnDisplayText(0) + Environment.NewLine +
+                        "   Shank Diameter [mm]            = " + newNode.GetColumnDisplayText(1) + Environment.NewLine +
+                        "   Head Diameter [mm]             = " + newNode.GetColumnDisplayText(2) + Environment.NewLine +
+                        "   Maximum Connection Length [mm] = " + newNode.GetColumnDisplayText(3) + Environment.NewLine +
+                        "   Material Name                  = " + newNode.GetColumnDisplayText(4) + Environment.NewLine);
+
+                    //for (int j = 1; j < (targRange.Columns.Count+1); j++)
+                    //{
+                    //    lw.WriteFullline("  Cell[" + i.ToString() + "," + j.ToString() + "] = " + targRange.Cells[i, j].Value);
+                    //    //newNode.SetColumnDisplayText(j, targRange.Cells[i, j].Value);
+                    //}
+                }
+            }
+            catch (Exception e)
+            {
+                lw.WriteFullline("!ERROR occurred: " + Environment.NewLine +
+                    e.ToString());
+            }
+        }
+        #endregion
     }
 }
