@@ -277,57 +277,37 @@ namespace UCCreator
                 tree_control0.InsertColumn(3, "Maximum Connection Length [mm]", default_width);
                 tree_control0.InsertColumn(4, "Material", default_width);
 
-                allNodes.Add(tree_control0.CreateNode("test"));
-                allNodes.Add(tree_control0.CreateNode("test2"));
-                allNodes.Add(tree_control0.CreateNode("test3"));
+                //allNodes.Add(tree_control0.CreateNode("test"));
+                //allNodes.Add(tree_control0.CreateNode("test2"));
+                //allNodes.Add(tree_control0.CreateNode("test3"));
 
-                tree_control0.InsertNode(allNodes[0], null, null, Tree.NodeInsertOption.First);
-                tree_control0.InsertNode(allNodes[1], null, null, Tree.NodeInsertOption.Last);
-                tree_control0.InsertNode(allNodes[2], null, null, Tree.NodeInsertOption.Last);
+                //tree_control0.InsertNode(allNodes[0], null, null, Tree.NodeInsertOption.First);
+                //tree_control0.InsertNode(allNodes[1], null, null, Tree.NodeInsertOption.Last);
+                //tree_control0.InsertNode(allNodes[2], null, null, Tree.NodeInsertOption.Last);
 
-                allNodes[0].SetColumnDisplayText(0, "M10X90");
-                allNodes[0].SetColumnDisplayText(1, "10");
-                allNodes[0].SetColumnDisplayText(2, "12");
-                allNodes[0].SetColumnDisplayText(3, "90");
-                allNodes[0].SetColumnDisplayText(4, "Aluminum_1942");
+                //allNodes[0].SetColumnDisplayText(0, "M10X90");
+                //allNodes[0].SetColumnDisplayText(1, "10");
+                //allNodes[0].SetColumnDisplayText(2, "12");
+                //allNodes[0].SetColumnDisplayText(3, "90");
+                //allNodes[0].SetColumnDisplayText(4, "Aluminum_1942");
 
-                allNodes[1].SetColumnDisplayText(0, "M10X80");
-                allNodes[1].SetColumnDisplayText(1, "10");
-                allNodes[1].SetColumnDisplayText(2, "12");
-                allNodes[1].SetColumnDisplayText(3, "80");
-                allNodes[1].SetColumnDisplayText(4, "Aluminum_1942");
+                //allNodes[1].SetColumnDisplayText(0, "M10X80");
+                //allNodes[1].SetColumnDisplayText(1, "10");
+                //allNodes[1].SetColumnDisplayText(2, "12");
+                //allNodes[1].SetColumnDisplayText(3, "80");
+                //allNodes[1].SetColumnDisplayText(4, "Aluminum_1942");
 
-                allNodes[2].SetColumnDisplayText(0, "M12X50");
-                allNodes[2].SetColumnDisplayText(1, "12");
-                allNodes[2].SetColumnDisplayText(2, "15");
-                allNodes[2].SetColumnDisplayText(3, "50");
-                allNodes[2].SetColumnDisplayText(4, "Aluminum_1942");
-
+                //allNodes[2].SetColumnDisplayText(0, "M12X50");
+                //allNodes[2].SetColumnDisplayText(1, "12");
+                //allNodes[2].SetColumnDisplayText(2, "15");
+                //allNodes[2].SetColumnDisplayText(3, "50");
+                //allNodes[2].SetColumnDisplayText(4, "Aluminum_1942");
             }
             catch (Exception ex)
             {
                 //---- Enter your exception handling code here -----
                 theUI.NXMessageBox.Show("Block Styler", NXMessageBox.DialogType.Error, ex.ToString());
             }
-        }
-
-        //------------------------------------------------------------------------------
-        //Callback Name: apply_cb
-        //------------------------------------------------------------------------------
-        public int apply_cb()
-        {
-            int errorCode = 0;
-            try
-            {
-                //---- Enter your callback code here -----
-            }
-            catch (Exception ex)
-            {
-                //---- Enter your exception handling code here -----
-                errorCode = 1;
-                theUI.NXMessageBox.Show("Block Styler", NXMessageBox.DialogType.Error, ex.ToString());
-            }
-            return errorCode;
         }
 
         //------------------------------------------------------------------------------
@@ -377,25 +357,6 @@ namespace UCCreator
             return 0;
         }
 
-        //------------------------------------------------------------------------------
-        //Callback Name: ok_cb
-        //------------------------------------------------------------------------------
-        public int ok_cb()
-        {
-            int errorCode = 0;
-            try
-            {
-                errorCode = apply_cb();
-                //---- Enter your callback code here -----
-            }
-            catch (Exception ex)
-            {
-                //---- Enter your exception handling code here -----
-                errorCode = 1;
-                theUI.NXMessageBox.Show("Block Styler", NXMessageBox.DialogType.Error, ex.ToString());
-            }
-            return errorCode;
-        }
         //------------------------------------------------------------------------------
         //Treelist specific callbacks
         //------------------------------------------------------------------------------
