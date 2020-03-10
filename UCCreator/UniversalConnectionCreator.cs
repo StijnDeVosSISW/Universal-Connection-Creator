@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -19,14 +20,10 @@ namespace UCCreator
         private NXOpen.BlockStyler.Label label0;// Block type: Label
         private NXOpen.BlockStyler.Separator separator0;// Block type: Separator
         private NXOpen.BlockStyler.Tree tree_control0;// Block type: Tree Control
-        private NXOpen.BlockStyler.Button button_ADD;// Block type: Button
-        private NXOpen.BlockStyler.Button button_Delete;// Block type: Button
         private NXOpen.BlockStyler.Group group;// Block type: Group
-        private NXOpen.BlockStyler.StringBlock TB_ADD_Name;// Block type: String
-        private NXOpen.BlockStyler.IntegerBlock integer_ADD_ShankDiam;// Block type: Integer
-        private NXOpen.BlockStyler.IntegerBlock integer_ADD_HeadDiam;// Block type: Integer
-        private NXOpen.BlockStyler.IntegerBlock integer_ADD_MaxConnLength;// Block type: Integer
-        private NXOpen.BlockStyler.StringBlock TB_ADD_Material;// Block type: String
+        private NXOpen.BlockStyler.FileSelection nativeFileBrowser0;// Block type: NativeFileBrowser
+        private NXOpen.BlockStyler.Button button_IMPORT;// Block type: Button
+        private NXOpen.BlockStyler.Button button_CREATE;// Block type: Button
 
         private List<NXOpen.BlockStyler.Node> allNodes = new List<Node>();
         private List<MODELS.BoltDefinition> allBoltDefinitions = new List<MODELS.BoltDefinition>();
@@ -47,8 +44,6 @@ namespace UCCreator
                 theUI = UI.GetUI();
                 theDlxFileName = "UniversalConnectionCreator.dlx";
                 theDialog = theUI.CreateDialog(theDlxFileName);
-                theDialog.AddApplyHandler(new NXOpen.BlockStyler.BlockDialog.Apply(apply_cb));
-                theDialog.AddOkHandler(new NXOpen.BlockStyler.BlockDialog.Ok(ok_cb));
                 theDialog.AddUpdateHandler(new NXOpen.BlockStyler.BlockDialog.Update(update_cb));
                 theDialog.AddInitializeHandler(new NXOpen.BlockStyler.BlockDialog.Initialize(initialize_cb));
                 theDialog.AddDialogShownHandler(new NXOpen.BlockStyler.BlockDialog.DialogShown(dialogShown_cb));
@@ -190,16 +185,10 @@ namespace UCCreator
                 label0 = (NXOpen.BlockStyler.Label)theDialog.TopBlock.FindBlock("label0");
                 separator0 = (NXOpen.BlockStyler.Separator)theDialog.TopBlock.FindBlock("separator0");
                 tree_control0 = (NXOpen.BlockStyler.Tree)theDialog.TopBlock.FindBlock("tree_control0");
-                button_ADD = (NXOpen.BlockStyler.Button)theDialog.TopBlock.FindBlock("button_ADD");
-                button_Delete = (NXOpen.BlockStyler.Button)theDialog.TopBlock.FindBlock("button_Delete");
                 group = (NXOpen.BlockStyler.Group)theDialog.TopBlock.FindBlock("group");
-                TB_ADD_Name = (NXOpen.BlockStyler.StringBlock)theDialog.TopBlock.FindBlock("TB_ADD_Name");
-                integer_ADD_ShankDiam = (NXOpen.BlockStyler.IntegerBlock)theDialog.TopBlock.FindBlock("integer_ADD_ShankDiam");
-                integer_ADD_HeadDiam = (NXOpen.BlockStyler.IntegerBlock)theDialog.TopBlock.FindBlock("integer_ADD_HeadDiam");
-                integer_ADD_MaxConnLength = (NXOpen.BlockStyler.IntegerBlock)theDialog.TopBlock.FindBlock("integer_ADD_MaxConnLength");
-                TB_ADD_Material = (NXOpen.BlockStyler.StringBlock)theDialog.TopBlock.FindBlock("TB_ADD_Material");
-
-                tree_control0.Height = 500;
+                nativeFileBrowser0 = (NXOpen.BlockStyler.FileSelection)theDialog.TopBlock.FindBlock("nativeFileBrowser0");
+                button_IMPORT = (NXOpen.BlockStyler.Button)theDialog.TopBlock.FindBlock("button_IMPORT");
+                button_CREATE = (NXOpen.BlockStyler.Button)theDialog.TopBlock.FindBlock("button_CREATE");
 
                 //------------------------------------------------------------------------------
                 //Registration of Treelist specific callbacks
@@ -247,14 +236,6 @@ namespace UCCreator
                 //tree_control0.SetOnDefaultActionHandler(new NXOpen.BlockStyler.Tree.OnDefaultActionCallback(OnDefaultActionCallback));
 
                 //------------------------------------------------------------------------------
-                //------------------------------------------------------------------------------
-                //Registration of StringBlock specific callbacks
-                //------------------------------------------------------------------------------
-                //TB_ADD_Name.SetKeystrokeCallback(new NXOpen.BlockStyler.StringBlock.KeystrokeCallback(KeystrokeCallback));
-
-                //TB_ADD_Material.SetKeystrokeCallback(new NXOpen.BlockStyler.StringBlock.KeystrokeCallback(KeystrokeCallback));
-
-                //------------------------------------------------------------------------------
             }
             catch (Exception ex)
             {
@@ -273,7 +254,7 @@ namespace UCCreator
             try
             {
                 // Intialize GUI
-
+                
 
                 // Initialize Tree Control (List of predefined Universal Bolt Connections)
                 int default_width = 150;
@@ -351,31 +332,23 @@ namespace UCCreator
                 {
                     //---------Enter your code here-----------
                 }
-                else if (block == button_ADD)
+                else if (block == nativeFileBrowser0)
+                {
+                    button_IMPORT.Enable = false;
+
+                    if (nativeFileBrowser0.Path != null)
+                    {
+                        if (File.Exists(nativeFileBrowser0.Path))
+                        {
+                            button_IMPORT.Enable = true;
+                        }
+                    }
+                }
+                else if (block == button_IMPORT)
                 {
                     //---------Enter your code here-----------
                 }
-                else if (block == button_Delete)
-                {
-                    //---------Enter your code here-----------
-                }
-                else if (block == TB_ADD_Name)
-                {
-                    //---------Enter your code here-----------
-                }
-                else if (block == integer_ADD_ShankDiam)
-                {
-                    //---------Enter your code here-----------
-                }
-                else if (block == integer_ADD_HeadDiam)
-                {
-                    //---------Enter your code here-----------
-                }
-                else if (block == integer_ADD_MaxConnLength)
-                {
-                    //---------Enter your code here-----------
-                }
-                else if (block == TB_ADD_Material)
+                else if (block == button_CREATE)
                 {
                     //---------Enter your code here-----------
                 }
