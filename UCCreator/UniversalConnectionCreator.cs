@@ -28,8 +28,8 @@ namespace UCCreator
         private NXOpen.BlockStyler.Enumeration enum0;// Block type: Enumeration
         private NXOpen.BlockStyler.Button button_CREATE;// Block type: Button
 
-        private List<NXOpen.BlockStyler.Node> allNodes = new List<Node>();
-        private List<MODELS.BoltDefinition> allBoltDefinitions = new List<MODELS.BoltDefinition>();
+        private static List<NXOpen.BlockStyler.Node> allNodes = new List<Node>();
+        private static List<MODELS.BoltDefinition> allBoltDefinitions = new List<MODELS.BoltDefinition>();
         private enum MenuID
         {
             AddNode,
@@ -304,6 +304,9 @@ namespace UCCreator
                     default:
                         break;
                 }
+
+                // Get current working object
+                currWork = theSession.Parts.BaseWork;
             }
             catch (Exception ex)
             {
@@ -968,6 +971,11 @@ namespace UCCreator
                         return;
                         break;
                 }
+
+
+                // Set initial working object to working again
+                // -------------------------------------------
+                theSession.Parts.SetWork(currWork);
             }
             catch (Exception e)
             {
@@ -1070,12 +1078,15 @@ namespace UCCreator
         /// <summary>
         /// Create predefined Selection Recipes
         /// </summary>
+        /// <param name="myAFEM">Target AFEM object</param>
         private static void CreateSelectionRecipes(NXOpen.CAE.AssyFemPart myAFEM)
         {
             try
             {
                 lw.WriteFullline(Environment.NewLine +
                 "CREATE SELECTION RECIPES" + Environment.NewLine);
+
+                theSession.Parts.SetWork((NXOpen.BasePart)myAFEM);
 
                 // Create "Get all meshes" Selection Recipe
                 // ----------------------------------------
@@ -1114,18 +1125,47 @@ namespace UCCreator
                 // Create Seletion Recipe (NX12)
                 NXOpen.CAE.BoundingVolumeSelectionRecipe SelRec_GetAllMeshes;
                 SelRec_GetAllMeshes = myAFEM.SelectionRecipes.CreateBoxBoundingVolumeRecipe("Get all meshes", leftPoint, rightPoint, entitytypes);
-
                 SelRec_GetAllMeshes.BoundingVolume.Containment = NXOpen.CAE.CaeBoundingVolumePrimitiveContainment.Inside;
 
                 lw.WriteFullline("      --> created");
 
             otherRecipes:;
+                // Bolt Curve-related Selection Recipes
+                // ------------------------------------
+                foreach (MODELS.BoltDefinition boltDefinition in allBoltDefinitions)
+                {
+                    // Get target name
+                    targSelRecipeName = boltDefinition.Name + " Curves";
+                    lw.WriteFullline("   Selection Recipe:  " + targSelRecipeName.ToUpper());
 
+                    // Check if not existing yet
+                    foreach (NXOpen.CAE.SelectionRecipe selRecipe in myAFEM.SelectionRecipes)
+                    {
+                        if (selRecipe.Name.ToUpper() == targSelRecipeName.ToUpper())
+                        {
+                            lw.WriteFullline("      --> ALREADY EXISTS: skipped");
+                            goto nextBoltDef;
+                        }
+                    }
 
+                    // Create Seletion Recipe (NX12)
+                    NXOpen.CAE.AttributeSelectionRecipe myAttributeSelRecipe = myAFEM.SelectionRecipes.CreateAttributeRecipe(
+                        targSelRecipeName,
+                        NXOpen.CAE.CaeSetGroupFilterType.GeomCurve,
+                        false,
+                        (NXOpen.CAE.CaeSetGroupFilterType)(-1));
+
+                    myAttributeSelRecipe.SetUserAttributes(true, "Curve_" + boltDefinition.Name, false, 0, new string[0], new NXObject.AttributeInformation[0], new NXObject.AttributeInformation[0]);
+
+                    lw.WriteFullline("      --> created");
+
+                nextBoltDef:;
+                }
             }
             catch (Exception e)
             {
-
+                lw.WriteFullline("!ERROR occurred: " + Environment.NewLine +
+                    e.ToString());
             }
         }
 
