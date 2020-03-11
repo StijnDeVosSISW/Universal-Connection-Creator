@@ -643,7 +643,9 @@ namespace UCCreator
             }
         }
 
-
+        /// <summary>
+        /// Import last used Bolt Definitions, stored by the previous session
+        /// </summary>
         private void ImportStoredBoltDefinitions()
         {
             try
@@ -874,6 +876,14 @@ namespace UCCreator
                 lw.WriteFullline("!ERROR occurred: " + Environment.NewLine +
                     e.ToString());
             }
+        }
+
+        /// <summary>
+        /// Start Bolt generation execution
+        /// </summary>
+        private void ExecuteBoltGeneration()
+        {
+
         }
         #endregion
     }
