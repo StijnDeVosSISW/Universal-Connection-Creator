@@ -34,7 +34,9 @@ namespace UCCreator
             AddNode,
             DeleteNode
         };
-         
+
+        private static string ExcelStorageName = "UCCreator_SavedBoltDefinitions";  // Name of Excel file in which content of Universal Conn Def tree will be stored for later use
+
         //------------------------------------------------------------------------------
         //Constructor for NX Styler class
         //------------------------------------------------------------------------------
@@ -280,6 +282,11 @@ namespace UCCreator
                 tree_control0.InsertColumn(2, "Head Diameter [mm]", default_width);
                 tree_control0.InsertColumn(3, "Maximum Connection Length [mm]", default_width);
                 tree_control0.InsertColumn(4, "Material", default_width);
+
+                // Import stored Bolt Definitions
+                ImportStoredBoltDefinitions();
+
+
 
                 //allNodes.Add(tree_control0.CreateNode("test"));
                 //allNodes.Add(tree_control0.CreateNode("test2"));
@@ -550,6 +557,10 @@ namespace UCCreator
 
 
         #region CUSTOM METHODS
+        /// <summary>
+        /// Import predefined Bolt Definitions from an Excel file
+        /// </summary>
+        /// <param name="filePath">Full path to target Excel file</param>
         private void ImportDefsFromExcel(string filePath)
         {
             try
@@ -622,6 +633,8 @@ namespace UCCreator
                 //quit and release
                 xlApp.Quit();
                 Marshal.ReleaseComObject(xlApp);
+
+                lw.WriteFullline("Released: targRange, xlWorksheet, xlWorkbook, xlApp");
             }
             catch (Exception e)
             {
@@ -631,6 +644,43 @@ namespace UCCreator
         }
 
 
+        private void ImportStoredBoltDefinitions()
+        {
+            try
+            {
+                lw.WriteFullline(Environment.NewLine +
+                    " -------------------------------- " + Environment.NewLine +
+                    "| IMPORT STORED BOLT DEFINITIONS |" + Environment.NewLine +
+                    " -------------------------------- ");
+
+                // Get target file path to stored Excel file
+                string filePath = System.Reflection.Assembly.GetExecutingAssembly().CodeBase;
+                filePath = filePath.Remove(filePath.LastIndexOf("/")) + "\\" + ExcelStorageName + ".xlsx";
+                filePath = filePath.Substring(filePath.IndexOf("/")).Substring(3).Replace("/","\\");
+                
+                lw.WriteFullline("File path = " + Environment.NewLine +
+                    filePath);
+
+                // Check if it exists
+                if (!File.Exists(filePath))
+                {
+                    lw.WriteFullline("No stored bolt definitions could be found:  continue...");
+                    return;
+                }
+
+                // Import Bolt Definitions from target Excel file
+                ImportDefsFromExcel(filePath);
+            }
+            catch (Exception e)
+            {
+                lw.WriteFullline("!ERROR occurred: " + Environment.NewLine +
+                    e.ToString());
+            }
+        }
+
+        /// <summary>
+        /// Store current Universal Bolt Connection definitions in an Excel file
+        /// </summary>
         private void StoreUnivConnList()
         {
             try
@@ -642,7 +692,7 @@ namespace UCCreator
 
                 // Get target Excel file path
                 string filePath = System.Reflection.Assembly.GetExecutingAssembly().CodeBase;
-                filePath = filePath.Remove(filePath.LastIndexOf("/")) + "\\UCCreator_SavedBoltDefinitions.xlsx";
+                filePath = filePath.Remove(filePath.LastIndexOf("/")) + "\\"+ ExcelStorageName + ".xlsx";
                 lw.WriteFullline("Target file path :  " + filePath);
 
                 // Create new Excel file
@@ -700,6 +750,8 @@ namespace UCCreator
                 //quit and release
                 xlApp.Quit();
                 Marshal.ReleaseComObject(xlApp);
+
+                lw.WriteFullline("Released: xlWorksheet, xlWorkbook, xlApp");
             }
             catch (Exception e)
             {
