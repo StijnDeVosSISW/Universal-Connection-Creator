@@ -25,6 +25,7 @@ namespace UCCreator
         private NXOpen.BlockStyler.Group group;// Block type: Group
         private NXOpen.BlockStyler.FileSelection nativeFileBrowser0;// Block type: NativeFileBrowser
         private NXOpen.BlockStyler.Button button_IMPORT;// Block type: Button
+        private NXOpen.BlockStyler.Enumeration enum0;// Block type: Enumeration
         private NXOpen.BlockStyler.Button button_CREATE;// Block type: Button
 
         private List<NXOpen.BlockStyler.Node> allNodes = new List<Node>();
@@ -36,6 +37,8 @@ namespace UCCreator
         };
 
         private static string ExcelStorageName = "UCCreator_SavedBoltDefinitions";  // Name of Excel file in which content of Universal Conn Def tree will be stored for later use
+        private static bool ProcessAll = true;
+        private static NXOpen.BasePart currWork = null;
 
         //------------------------------------------------------------------------------
         //Constructor for NX Styler class
@@ -196,6 +199,7 @@ namespace UCCreator
                 group = (NXOpen.BlockStyler.Group)theDialog.TopBlock.FindBlock("group");
                 nativeFileBrowser0 = (NXOpen.BlockStyler.FileSelection)theDialog.TopBlock.FindBlock("nativeFileBrowser0");
                 button_IMPORT = (NXOpen.BlockStyler.Button)theDialog.TopBlock.FindBlock("button_IMPORT");
+                enum0 = (NXOpen.BlockStyler.Enumeration)theDialog.TopBlock.FindBlock("enum0");
                 button_CREATE = (NXOpen.BlockStyler.Button)theDialog.TopBlock.FindBlock("button_CREATE");
 
                 //------------------------------------------------------------------------------
@@ -286,33 +290,20 @@ namespace UCCreator
                 // Import stored Bolt Definitions
                 ImportStoredBoltDefinitions();
 
+                // Check value of process level switch
+                switch (enum0.ValueAsString)
+                {
+                    case "This level and all sub-levels":
+                        ProcessAll = true;
+                        break;
 
+                    case "This level only":
+                        ProcessAll = false;
+                        break;
 
-                //allNodes.Add(tree_control0.CreateNode("test"));
-                //allNodes.Add(tree_control0.CreateNode("test2"));
-                //allNodes.Add(tree_control0.CreateNode("test3"));
-
-                //tree_control0.InsertNode(allNodes[0], null, null, Tree.NodeInsertOption.First);
-                //tree_control0.InsertNode(allNodes[1], null, null, Tree.NodeInsertOption.Last);
-                //tree_control0.InsertNode(allNodes[2], null, null, Tree.NodeInsertOption.Last);
-
-                //allNodes[0].SetColumnDisplayText(0, "M10X90");
-                //allNodes[0].SetColumnDisplayText(1, "10");
-                //allNodes[0].SetColumnDisplayText(2, "12");
-                //allNodes[0].SetColumnDisplayText(3, "90");
-                //allNodes[0].SetColumnDisplayText(4, "Aluminum_1942");
-
-                //allNodes[1].SetColumnDisplayText(0, "M10X80");
-                //allNodes[1].SetColumnDisplayText(1, "10");
-                //allNodes[1].SetColumnDisplayText(2, "12");
-                //allNodes[1].SetColumnDisplayText(3, "80");
-                //allNodes[1].SetColumnDisplayText(4, "Aluminum_1942");
-
-                //allNodes[2].SetColumnDisplayText(0, "M12X50");
-                //allNodes[2].SetColumnDisplayText(1, "12");
-                //allNodes[2].SetColumnDisplayText(2, "15");
-                //allNodes[2].SetColumnDisplayText(3, "50");
-                //allNodes[2].SetColumnDisplayText(4, "Aluminum_1942");
+                    default:
+                        break;
+                }
             }
             catch (Exception ex)
             {
@@ -355,10 +346,28 @@ namespace UCCreator
                         ImportDefsFromExcel(nativeFileBrowser0.Path);
                     }
                 }
+                else if (block == enum0)
+                {
+                    //lw.WriteFullline("enum0.ValueAsString = " + enum0.ValueAsString);
+
+                    switch (enum0.ValueAsString)
+                    {
+                        case "This level and all sub-levels":
+                            ProcessAll = true;
+                            break;
+
+                        case "This level only":
+                            ProcessAll = false;
+                            break;
+
+                        default:
+                            break;
+                    }
+                }
                 else if (block == button_CREATE)
                 {
-                    // ...
-
+                    // Execute Universal Bolt Connection creation
+                    ExecuteBoltGeneration();
 
                     // Store current Tree List content to use in next session
                     StoreUnivConnList();
@@ -882,6 +891,245 @@ namespace UCCreator
         /// Start Bolt generation execution
         /// </summary>
         private void ExecuteBoltGeneration()
+        {
+            try
+            {
+                lw.WriteFullline(Environment.NewLine +
+                    " ------------------------- " + Environment.NewLine +
+                    "| EXECUTE BOLT GENERATION |" + Environment.NewLine +
+                    " ------------------------- ");
+
+                // CREATE LIST OF PREDEFINED BOLT CONNECTIONS
+                lw.WriteFullline("Generate list of predefined Bolt Connections...");
+
+                allBoltDefinitions.Clear();
+
+                foreach (NXOpen.BlockStyler.Node node in allNodes)
+                {
+                    allBoltDefinitions.Add(new MODELS.BoltDefinition()
+                    {
+                        Name = node.GetColumnDisplayText(0),
+                        ShankDiam = Convert.ToInt32(node.GetColumnDisplayText(1)),
+                        HeadDiam = Convert.ToInt32(node.GetColumnDisplayText(2)),
+                        MaxConnLength = Convert.ToInt32(node.GetColumnDisplayText(3)),
+                        MaterialName = node.GetColumnDisplayText(4)
+                    }); ;
+
+                    lw.WriteFullline("   Added Bolt Definition:  " + node.GetColumnDisplayText(0).ToUpper());
+                }
+
+                // Loop through all (A)FEM objects
+                lw.WriteFullline(Environment.NewLine +
+                    " --------------------------------- " + Environment.NewLine +
+                    "| Loop through all (A)FEM objects |" + Environment.NewLine +
+                    " --------------------------------- ");
+
+                currWork = theSession.Parts.BaseWork;
+                lw.WriteFullline("Current working object :  " + currWork.ToString());
+
+                switch (theSession.Parts.BaseWork.GetType().ToString())
+                {
+                    case "NXOpen.CAE.SimPart":
+                        lw.WriteFullline("---> Recognized as SIM");
+                        NXOpen.CAE.SimPart mySIM = (NXOpen.CAE.SimPart)theSession.Parts.BaseWork;
+
+                        switch (mySIM.FemPart.GetType().ToString())
+                        {
+                            case "NXOpen.CAE.AssyFemPart":
+                                lw.WriteFullline("---> Underlying CAE object = recognized as AFEM");
+                                ProcessFromAFEM((NXOpen.CAE.AssyFemPart)mySIM.FemPart);
+                                break;
+
+                            case "NXOpen.CAE.FemPart":
+                                lw.WriteFullline("---> Underlying CAE object = recognized as FEM");
+                                ProcessFromFEM((NXOpen.CAE.FemPart)mySIM.FemPart);
+                                break;
+
+                            default:
+                                lw.WriteFullline("---> Underlying CAE object = recognized as " + mySIM.FemPart.GetType().ToString() + " -> SKIPPED");
+                                break;
+                        }
+
+                        break;
+
+                    case "NXOpen.CAE.AssyFemPart":
+                        lw.WriteFullline("---> Recognized as AFEM");
+                        ProcessFromAFEM((NXOpen.CAE.AssyFemPart)theSession.Parts.BaseWork);
+                        break;
+
+                    case "NXOpen.CAE.FemPart":
+                        lw.WriteFullline("---> Recognized as FEM");
+                        ProcessFromFEM((NXOpen.CAE.FemPart)theSession.Parts.BaseWork);
+                        break;
+
+                    default:
+                        lw.WriteFullline("---> Not recognized as SIM, AFEM or FEM, but as:  " + theSession.Parts.BaseWork.GetType().ToString() + Environment.NewLine +
+                            "=> exiting...");
+                        return;
+                        break;
+                }
+            }
+            catch (Exception e)
+            {
+                lw.WriteFullline("!ERROR occurred: " + Environment.NewLine +
+                    e.ToString());
+            }
+        }
+
+        /// <summary>
+        /// Process target AFEM object and optionally loop through its child components
+        /// </summary>
+        /// <param name="myAFEM">Target AFEM object</param>
+        private static void ProcessFromAFEM(NXOpen.CAE.AssyFemPart myAFEM)
+        {
+            lw.WriteFullline(Environment.NewLine +
+                "AFEM : " + myAFEM.Name.ToString());
+
+            // CREATE SELECTION RECIPES
+            CreateSelectionRecipes(myAFEM);
+
+            // CREATE UNIVERSAL BOLT CONNECTION DEFINITIONS
+
+
+
+            if (ProcessAll)
+            {
+                // Cycle through all underlying FEM/AFEM objects and act appropriately
+                NXOpen.Assemblies.Component myRoot = myAFEM.ComponentAssembly.RootComponent;
+
+                if (myRoot != null)
+                {
+                    ProcessChildrenAFEM(myRoot);
+                }
+            }
+        }
+
+
+        /// <summary>
+        /// Loop through child components of a target Assembly object and perform an action based on the child component's object type
+        /// </summary>
+        /// <param name="myComp">Target Assembly object</param>
+        private static void ProcessChildrenAFEM(NXOpen.Assemblies.Component myComp)
+        {
+            lw.WriteFullline(Environment.NewLine +
+                "Processing children of AFEM : " + myComp.Name.ToString());
+
+            try
+            {
+                // Loop through all Child components of AFEM object
+                foreach (NXOpen.Assemblies.Component myChild in myComp.GetChildren())
+                {
+                    lw.WriteFullline("CHILD : " + myChild.Name.ToString());
+
+                    // Get OwningPart object of Child component
+                    NXOpen.BasePart myBasePart = myChild.Prototype.OwningPart;
+
+                    Type TargType = myBasePart.GetType();
+
+                    if (TargType != null)
+                    {
+                        switch (TargType.ToString())
+                        {
+                            case "NXOpen.CAE.AssyFemPart":
+                                lw.WriteFullline("Recognized as AFEM");
+
+                                ProcessFromAFEM((NXOpen.CAE.AssyFemPart)myBasePart);
+                                //ProcessChildrenAFEM(myChild);
+                                break;
+
+                            case "NXOpen.CAE.FemPart":
+                                lw.WriteFullline("Recognized as FEM");
+                                ProcessFromFEM((NXOpen.CAE.FemPart)myBasePart);
+                                break;
+
+                            default:
+                                lw.WriteFullline("Recognized as " + TargType.ToString() + " -> SKIPPED");
+                                break;
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                lw.WriteFullline("!ERROR - while processing children of AFEM : " + Environment.NewLine +
+                    e.ToString());
+            }
+        }
+
+
+        /// <summary>
+        /// Process a FEM object
+        /// </summary>
+        /// <param name="myFEM"></param>
+        private static void ProcessFromFEM(NXOpen.CAE.FemPart myFEM)
+        {
+            // Do nothing for now...
+        }
+
+
+        /// <summary>
+        /// Create predefined Selection Recipes
+        /// </summary>
+        private static void CreateSelectionRecipes(NXOpen.CAE.AssyFemPart myAFEM)
+        {
+            try
+            {
+                lw.WriteFullline(Environment.NewLine +
+                "CREATE SELECTION RECIPES" + Environment.NewLine);
+
+                // Create "Get all meshes" Selection Recipe
+                // ----------------------------------------
+                // Get target name
+                string targSelRecipeName = "Get all meshes";
+                lw.WriteFullline("   Selection Recipe:  " + targSelRecipeName.ToUpper());
+
+                // Check if not existing yet
+                foreach (NXOpen.CAE.SelectionRecipe selRecipe in myAFEM.SelectionRecipes)
+                {
+                    if (selRecipe.Name.ToUpper() == targSelRecipeName.ToUpper())
+                    {
+                        lw.WriteFullline("      --> ALREADY EXISTS: skipped");
+                        goto otherRecipes;
+                    }
+                }
+
+                // Set target entity types
+                NXOpen.CAE.CaeSetGroupFilterType[] entitytypes = new NXOpen.CAE.CaeSetGroupFilterType[1];
+                entitytypes[0] = NXOpen.CAE.CaeSetGroupFilterType.CaeMesh;
+
+                // Set points for Bounding Box
+                double box_offset = 999999;
+                NXOpen.Point leftPoint = myAFEM.Points.CreatePoint(new Point3d(-box_offset, -box_offset, -box_offset));
+                NXOpen.Point rightPoint = myAFEM.Points.CreatePoint(new Point3d(box_offset, box_offset, box_offset));
+
+                //// Create Selection Recipe (NX1899)
+                //NXOpen.CAE.SelRecipeBuilder selRecipeBuilder = myAFEM.SelectionRecipes.CreateSelRecipeBuilder();
+                //NXOpen.CAE.SelRecipeBoundingVolumeStrategy selRecipeBoundingVolumeStrategy = selRecipeBuilder.AddBoxBoundingVolumeStrategy(leftPoint, rightPoint, entitytypes, NXOpen.CAE.SelRecipeBuilder.InputFilterType.EntireModel, null);
+                //selRecipeBoundingVolumeStrategy.BoundingVolume.Containment = NXOpen.CAE.CaeBoundingVolumePrimitiveContainment.Inside;
+
+                //selRecipeBuilder.RecipeName = "Get all Meshes";
+                //selRecipeBuilder.Commit();
+
+
+                // Create Seletion Recipe (NX12)
+                NXOpen.CAE.BoundingVolumeSelectionRecipe SelRec_GetAllMeshes;
+                SelRec_GetAllMeshes = myAFEM.SelectionRecipes.CreateBoxBoundingVolumeRecipe("Get all meshes", leftPoint, rightPoint, entitytypes);
+
+                SelRec_GetAllMeshes.BoundingVolume.Containment = NXOpen.CAE.CaeBoundingVolumePrimitiveContainment.Inside;
+
+                lw.WriteFullline("      --> created");
+
+            otherRecipes:;
+
+
+            }
+            catch (Exception e)
+            {
+
+            }
+        }
+
+        private static void CreateUniversalBoltConnections()
         {
 
         }
