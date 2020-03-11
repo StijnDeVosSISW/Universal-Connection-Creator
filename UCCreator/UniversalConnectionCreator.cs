@@ -655,7 +655,7 @@ namespace UCCreator
 
                 // Get target file path to stored Excel file
                 string filePath = System.Reflection.Assembly.GetExecutingAssembly().CodeBase;
-                filePath = filePath.Remove(filePath.LastIndexOf("/")) + "\\" + ExcelStorageName + ".xlsx";
+                filePath = filePath.Remove(filePath.LastIndexOf("/")) + "\\" + ExcelStorageName + ".txt";
                 filePath = filePath.Substring(filePath.IndexOf("/")).Substring(3).Replace("/","\\");
                 
                 lw.WriteFullline("File path = " + Environment.NewLine +
@@ -692,66 +692,95 @@ namespace UCCreator
 
                 // Get target Excel file path
                 string filePath = System.Reflection.Assembly.GetExecutingAssembly().CodeBase;
-                filePath = filePath.Remove(filePath.LastIndexOf("/")) + "\\"+ ExcelStorageName + ".xlsx";
+                filePath = filePath.Remove(filePath.LastIndexOf("/")) + "\\"+ ExcelStorageName + ".txt";
+                filePath = filePath.Substring(filePath.IndexOf("/")).Substring(3).Replace("/", "\\");
+
                 lw.WriteFullline("Target file path :  " + filePath);
 
-                // Create new Excel file
-                Microsoft.Office.Interop.Excel.Application xlApp = new Microsoft.Office.Interop.Excel.Application();
-                Microsoft.Office.Interop.Excel.Workbook xlWorkbook = xlApp.Workbooks.Add();
-                Microsoft.Office.Interop.Excel.Worksheet xlWorksheet = xlWorkbook.Sheets[1];
-
-                // Populate with Node List content
+                // Create new Text file
+                if (File.Exists(filePath)) { File.Delete(filePath); }
                 lw.WriteFullline("Write content...");
-                // Headers
-                xlWorksheet.Cells[1, 1].Value = "Name";
-                xlWorksheet.Cells[1, 2].Value = "Shank Diameter [mm]";
-                xlWorksheet.Cells[1, 3].Value = "Head Diameter [mm]";
-                xlWorksheet.Cells[1, 4].Value = "Maximum Connection Length [mm]";
-                xlWorksheet.Cells[1, 5].Value = "Material";
 
-                lw.WriteFullline("   Added Headers");
-
-                // Content Rows
-                int i = 2;
-                foreach (NXOpen.BlockStyler.Node node in allNodes)
+                using (StreamWriter sw = File.CreateText(filePath))
                 {
-                    xlWorksheet.Cells[i, 1].Value = node.GetColumnDisplayText(0);
-                    xlWorksheet.Cells[i, 2].Value = node.GetColumnDisplayText(1);
-                    xlWorksheet.Cells[i, 3].Value = node.GetColumnDisplayText(2);
-                    xlWorksheet.Cells[i, 4].Value = node.GetColumnDisplayText(3);
-                    xlWorksheet.Cells[i, 5].Value = node.GetColumnDisplayText(4);
+                    // Write Headers
+                    sw.WriteLine("NAME | SHANK DIAMETER [mm] | HEAD DIAMETER [mm] | MAXIMUM CONNECTION LENGTH [mm] | MATERIAL");
+                    lw.WriteFullline("   Added Headers");
 
-                    lw.WriteFullline("   Added Node " + (i - 1).ToString());
+                    // Write content
+                    int i = 1;
+                    foreach (NXOpen.BlockStyler.Node node in allNodes)
+                    {
+                        sw.WriteLine(
+                            node.GetColumnDisplayText(0) + " | " +
+                            node.GetColumnDisplayText(1) + " | " +
+                            node.GetColumnDisplayText(2) + " | " +
+                            node.GetColumnDisplayText(3) + " | " +
+                            node.GetColumnDisplayText(4));
 
-                    i++;
+                        lw.WriteFullline("   Added Node " + i.ToString());
+                    }
                 }
 
+                lw.WriteFullline("Saved text file");
 
-                // Save Excel file
-                if (File.Exists(filePath))
-                {
-                    File.Delete(filePath);
-                }
-                xlWorkbook.SaveAs(filePath);
+                //// Create new Excel file
+                //Microsoft.Office.Interop.Excel.Application xlApp = new Microsoft.Office.Interop.Excel.Application();
+                //Microsoft.Office.Interop.Excel.Workbook xlWorkbook = xlApp.Workbooks.Add();
+                //Microsoft.Office.Interop.Excel.Worksheet xlWorksheet = xlWorkbook.Sheets[1];
 
-                lw.WriteFullline("Saved Excel file");
+                //// Populate with Node List content
+                //lw.WriteFullline("Write content...");
+                //// Headers
+                //xlWorksheet.Cells[1, 1].Value = "Name";
+                //xlWorksheet.Cells[1, 2].Value = "Shank Diameter [mm]";
+                //xlWorksheet.Cells[1, 3].Value = "Head Diameter [mm]";
+                //xlWorksheet.Cells[1, 4].Value = "Maximum Connection Length [mm]";
+                //xlWorksheet.Cells[1, 5].Value = "Material";
 
-                //cleanup
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
+                //lw.WriteFullline("   Added Headers");
 
-                //release com objects to fully kill excel process from running in the background
-                Marshal.ReleaseComObject(xlWorksheet);
+                //// Content Rows
+                //int i = 2;
+                //foreach (NXOpen.BlockStyler.Node node in allNodes)
+                //{
+                //    xlWorksheet.Cells[i, 1].Value = node.GetColumnDisplayText(0);
+                //    xlWorksheet.Cells[i, 2].Value = node.GetColumnDisplayText(1);
+                //    xlWorksheet.Cells[i, 3].Value = node.GetColumnDisplayText(2);
+                //    xlWorksheet.Cells[i, 4].Value = node.GetColumnDisplayText(3);
+                //    xlWorksheet.Cells[i, 5].Value = node.GetColumnDisplayText(4);
 
-                //close and release
-                xlWorkbook.Close();
-                Marshal.ReleaseComObject(xlWorkbook);
+                //    lw.WriteFullline("   Added Node " + (i - 1).ToString());
 
-                //quit and release
-                xlApp.Quit();
-                Marshal.ReleaseComObject(xlApp);
+                //    i++;
+                //}
 
-                lw.WriteFullline("Released: xlWorksheet, xlWorkbook, xlApp");
+
+                //// Save Excel file
+                //if (File.Exists(filePath))
+                //{
+                //    File.Delete(filePath);
+                //}
+                //xlWorkbook.SaveAs(filePath);
+
+                //lw.WriteFullline("Saved Excel file");
+
+                ////cleanup
+                //GC.Collect();
+                //GC.WaitForPendingFinalizers();
+
+                ////release com objects to fully kill excel process from running in the background
+                //Marshal.ReleaseComObject(xlWorksheet);
+
+                ////close and release
+                //xlWorkbook.Close();
+                //Marshal.ReleaseComObject(xlWorkbook);
+
+                ////quit and release
+                //xlApp.Quit();
+                //Marshal.ReleaseComObject(xlApp);
+
+                //lw.WriteFullline("Released: xlWorksheet, xlWorkbook, xlApp");
             }
             catch (Exception e)
             {
