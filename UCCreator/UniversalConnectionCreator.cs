@@ -653,6 +653,8 @@ namespace UCCreator
                     "| IMPORT STORED BOLT DEFINITIONS |" + Environment.NewLine +
                     " -------------------------------- ");
 
+                // Get target file
+                // ---------------
                 // Get target file path to stored Excel file
                 string filePath = System.Reflection.Assembly.GetExecutingAssembly().CodeBase;
                 filePath = filePath.Remove(filePath.LastIndexOf("/")) + "\\" + ExcelStorageName + ".txt";
@@ -668,8 +670,91 @@ namespace UCCreator
                     return;
                 }
 
-                // Import Bolt Definitions from target Excel file
-                ImportDefsFromExcel(filePath);
+                // Read all content of target file
+                string fileContent = "";
+                using (StreamReader sr = File.OpenText(filePath))
+                {
+                    fileContent = sr.ReadToEnd();
+                }
+
+
+                // Process target file content
+                // ---------------------------
+                // Split fileContent on NewLine characters
+                string[] allLines = fileContent.Split(Environment.NewLine.ToCharArray());
+
+                // Create a list of BoltDefinition objects based on info of each line
+                List<MODELS.BoltDefinition> currBoltDefinitions = new List<MODELS.BoltDefinition>();
+                foreach (string line in allLines)
+                {
+                    if (!line.Contains("DIAMETER") && line != "") // Makes sure we don't process the header content and that line content is not nothing
+                    {
+                        lw.WriteFullline("   PROCESSING:  " + line);
+                        string currLine = line;
+                        MODELS.BoltDefinition newBoltDefinition = new MODELS.BoltDefinition();
+
+                        // Name
+                        newBoltDefinition.Name = currLine.Remove(currLine.IndexOf("|") - 1);
+                        currLine = currLine.Substring(currLine.IndexOf("|") + 2);
+
+                        // Shank Diameter
+                        newBoltDefinition.ShankDiam = Convert.ToInt32(currLine.Remove(currLine.IndexOf("|") - 1));
+                        currLine = currLine.Substring(currLine.IndexOf("|") + 2);
+
+                        // Head Diameter
+                        newBoltDefinition.HeadDiam = Convert.ToInt32(currLine.Remove(currLine.IndexOf("|") - 1));
+                        currLine = currLine.Substring(currLine.IndexOf("|") + 2);
+
+                        // Maximum Connection Length
+                        newBoltDefinition.MaxConnLength = Convert.ToInt32(currLine.Remove(currLine.IndexOf("|") - 1));
+                        currLine = currLine.Substring(currLine.IndexOf("|") + 2);
+
+                        // Material
+                        newBoltDefinition.MaterialName = currLine;
+
+                        currBoltDefinitions.Add(newBoltDefinition);
+                    }
+                }
+
+
+                // Import as new Nodes in Tree List
+                // --------------------------------
+                // Clear all existing nodes and BoltDefinition objects
+                foreach (NXOpen.BlockStyler.Node myNode in allNodes)
+                {
+                    tree_control0.DeleteNode(myNode);
+                }
+                allNodes.Clear();
+
+                lw.WriteFullline(Environment.NewLine + "Delete existing Bolt Definitions :  SUCCESS");
+
+                // Import new Bolt Definitions
+                int i = 1;
+                foreach (MODELS.BoltDefinition boltDefinition in currBoltDefinitions)
+                {
+                    lw.WriteFullline(Environment.NewLine + "IMPORTING: Bolt Definition " + i.ToString());
+
+                    // Add new node to Tree List
+                    NXOpen.BlockStyler.Node newNode = tree_control0.CreateNode("<new>");
+                    tree_control0.InsertNode(newNode, null, null, Tree.NodeInsertOption.Last);
+
+                    newNode.SetColumnDisplayText(0, boltDefinition.Name);
+                    newNode.SetColumnDisplayText(1, boltDefinition.ShankDiam.ToString());
+                    newNode.SetColumnDisplayText(2, boltDefinition.HeadDiam.ToString());
+                    newNode.SetColumnDisplayText(3, boltDefinition.MaxConnLength.ToString());
+                    newNode.SetColumnDisplayText(4, boltDefinition.MaterialName);
+
+                    allNodes.Add(newNode);
+
+                    lw.WriteFullline("   New node created with:" + Environment.NewLine +
+                        "   Name                           = " + newNode.GetColumnDisplayText(0) + Environment.NewLine +
+                        "   Shank Diameter [mm]            = " + newNode.GetColumnDisplayText(1) + Environment.NewLine +
+                        "   Head Diameter [mm]             = " + newNode.GetColumnDisplayText(2) + Environment.NewLine +
+                        "   Maximum Connection Length [mm] = " + newNode.GetColumnDisplayText(3) + Environment.NewLine +
+                        "   Material Name                  = " + newNode.GetColumnDisplayText(4) + Environment.NewLine);
+
+                    i++;
+                }
             }
             catch (Exception e)
             {
@@ -719,6 +804,8 @@ namespace UCCreator
                             node.GetColumnDisplayText(4));
 
                         lw.WriteFullline("   Added Node " + i.ToString());
+
+                        i++;
                     }
                 }
 
