@@ -1152,12 +1152,10 @@ namespace UCCreator
                     {
                         if (selRecipe.Name.ToUpper() == targSelRecipeName.ToUpper())
                         {
-                            lw.WriteFullline("   Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> exists (skipped)");
+                            lw.WriteFullline("   Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> skipped (exists)");
                             goto nextBoltDef;
                         }
                     }
-
-                    //lw.WriteFullline("   Selection Recipe:  " + targSelRecipeName.ToUpper());
 
                     // Create Seletion Recipe (NX12)
                     NXOpen.CAE.AttributeSelectionRecipe myAttributeSelRecipe = myAFEM.SelectionRecipes.CreateAttributeRecipe(
@@ -1168,7 +1166,19 @@ namespace UCCreator
 
                     myAttributeSelRecipe.SetUserAttributes(true, "Curve_" + boltDefinition.Name, false, 0, new string[0], new NXObject.AttributeInformation[0], new NXObject.AttributeInformation[0]);
 
-                    lw.WriteFullline("   Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> created");
+                    //lw.WriteFullline("   Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> created");
+
+                    // If Selection Recipe contains 0 entities, delete again
+                    if (myAttributeSelRecipe.GetEntities().Length == 0)
+                    {
+                        theSession.UpdateManager.AddObjectsToDeleteList(new TaggedObject[] { myAttributeSelRecipe });
+                        theSession.UpdateManager.DoUpdate(new Session.UndoMarkId());
+                        lw.WriteFullline("   Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> skipped (0 entities)");
+                    }
+                    else
+                    {
+                        lw.WriteFullline("   Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> created (" + myAttributeSelRecipe.GetEntities().Length.ToString() + " entities)");
+                    }
 
                 nextBoltDef:;
                 }
@@ -1212,14 +1222,39 @@ namespace UCCreator
                         // Check if not existing yet
                         if (existingUnivConnNames.Contains(boltDefinition.Name.ToUpper()))
                         {
-                            lw.WriteFullline("   Bolt Definition:  " + boltDefinition.Name.ToUpper() + "  --> exists (skipped)");
+                            lw.WriteFullline("   BOLT DEFINITION:  " + boltDefinition.Name.ToUpper() + "  --> exists (skipped)");
                             continue;
+                        }
+
+                        lw.WriteFullline("   BOLT DEFINITION:  " + boltDefinition.Name.ToUpper());
+
+                        // Check if target Selection Recipe exists and contains any Curves at all
+                        // ----------------------------------------------------------------------
+                        NXOpen.CAE.SelectionRecipe targSelRecipe = null;
+
+                        try
+                        {
+                            targSelRecipe = myAFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper().Contains(boltDefinition.Name.ToUpper()));
+                        }
+                        catch (Exception e)
+                        {
+                            lw.WriteFullline("      Related Selection Recipe not found --> skipped");
+                            continue;
+                        }
+
+                        if (targSelRecipe.GetEntities().Length == 0)
+                        {
+                            lw.WriteFullline("      Related Selection Recipe (" + targSelRecipe.Name + ") :  " + targSelRecipe.GetEntities().Length.ToString() + " entitities " +
+                                "--> skipped");
+                            continue;
+                        }
+                        else
+                        {
+                            lw.WriteFullline("      Related Selection Recipe (" + targSelRecipe.Name + ") :  " + targSelRecipe.GetEntities().Length.ToString() + " entitities ");
                         }
 
                         // Create Universal Bolt Connection definition (NX12)
                         // --------------------------------------------------
-                        lw.WriteFullline("   Bolt Definition:  " + boltDefinition.Name.ToUpper());
-
                         NXOpen.CAE.Connections.Bolt newBoltConn =
                             (NXOpen.CAE.Connections.Bolt)myAFEM.BaseFEModel.ConnectionsContainer.CreateConnection(NXOpen.CAE.Connections.ConnectionType.Bolt, boltDefinition.Name);
 
@@ -1232,8 +1267,8 @@ namespace UCCreator
                         lw.WriteFullline("      Targets         : " + myAFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper() == "GET ALL MESHES").Name + " (Selection Recipe)");
 
                         // Set Locations
-                        newBoltConn.AddLocationSelectionRecipe(0, myAFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper().Contains(boltDefinition.Name.ToUpper())));
-                        lw.WriteFullline("      Locations       : " + myAFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper().Contains(boltDefinition.Name.ToUpper())).Name + " (Selection Recipe)");
+                        newBoltConn.AddLocationSelectionRecipe(0, targSelRecipe);
+                        lw.WriteFullline("      Locations       : " + targSelRecipe.Name + " (Selection Recipe)");
 
                         // Set Physicals
                         newBoltConn.DiameterType = NXOpen.CAE.Connections.DiameterType.User;
