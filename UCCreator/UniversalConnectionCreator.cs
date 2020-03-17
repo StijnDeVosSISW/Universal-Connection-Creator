@@ -22,6 +22,10 @@ namespace UCCreator
         private NXOpen.BlockStyler.Label label0;// Block type: Label
         private NXOpen.BlockStyler.Separator separator0;// Block type: Separator
         private NXOpen.BlockStyler.Tree tree_control0;// Block type: Tree Control
+        private NXOpen.BlockStyler.Group group1;// Block type: Group
+        private NXOpen.BlockStyler.Group group_SavedLists;// Block type: Group
+        private NXOpen.BlockStyler.Enumeration enum_SavedLists;// Block type: Enumeration
+        private NXOpen.BlockStyler.Button button_IMPORT_SavedLists;// Block type: Button
         private NXOpen.BlockStyler.Group group;// Block type: Group
         private NXOpen.BlockStyler.FileSelection nativeFileBrowser0;// Block type: NativeFileBrowser
         private NXOpen.BlockStyler.Button button_IMPORT;// Block type: Button
@@ -36,7 +40,10 @@ namespace UCCreator
             DeleteNode
         };
 
-        private static string ExcelStorageName = "UCCreator_SavedBoltDefinitions";  // Name of Excel file in which content of Universal Conn Def tree will be stored for later use
+        private static string StorageFileName = "UCCreator_SavedBoltDefinitions";  // Name of Excel file in which content of Universal Conn Def tree will be stored for later use
+        private static string StoragePath_server = null;
+        private static string StoragePath_user = null;
+
         private static bool ProcessAll = true;
         private static NXOpen.BasePart currWork = null;
 
@@ -196,11 +203,22 @@ namespace UCCreator
                 label0 = (NXOpen.BlockStyler.Label)theDialog.TopBlock.FindBlock("label0");
                 separator0 = (NXOpen.BlockStyler.Separator)theDialog.TopBlock.FindBlock("separator0");
                 tree_control0 = (NXOpen.BlockStyler.Tree)theDialog.TopBlock.FindBlock("tree_control0");
+                group1 = (NXOpen.BlockStyler.Group)theDialog.TopBlock.FindBlock("group1");
+                group_SavedLists = (NXOpen.BlockStyler.Group)theDialog.TopBlock.FindBlock("group_SavedLists");
+                enum_SavedLists = (NXOpen.BlockStyler.Enumeration)theDialog.TopBlock.FindBlock("enum_SavedLists");
+                button_IMPORT_SavedLists = (NXOpen.BlockStyler.Button)theDialog.TopBlock.FindBlock("button_IMPORT_SavedLists");
                 group = (NXOpen.BlockStyler.Group)theDialog.TopBlock.FindBlock("group");
                 nativeFileBrowser0 = (NXOpen.BlockStyler.FileSelection)theDialog.TopBlock.FindBlock("nativeFileBrowser0");
                 button_IMPORT = (NXOpen.BlockStyler.Button)theDialog.TopBlock.FindBlock("button_IMPORT");
                 enum0 = (NXOpen.BlockStyler.Enumeration)theDialog.TopBlock.FindBlock("enum0");
                 button_CREATE = (NXOpen.BlockStyler.Button)theDialog.TopBlock.FindBlock("button_CREATE");
+
+                // Initialize storage paths
+                StoragePath_server = System.Reflection.Assembly.GetExecutingAssembly().CodeBase;
+                StoragePath_server = StoragePath_server.Remove(StoragePath_server.LastIndexOf("/")) + "\\" + StorageFileName + ".txt";
+                StoragePath_server = StoragePath_server.Substring(StoragePath_server.IndexOf("/")).Substring(3).Replace("/", "\\");
+
+                StoragePath_user = Environment.GetEnvironmentVariable("USERPROFILE") + "\\AppData\\Local\\UniversalConnectionCreator\\" + StorageFileName + ".txt"; 
 
                 //------------------------------------------------------------------------------
                 //Registration of Treelist specific callbacks
@@ -277,6 +295,8 @@ namespace UCCreator
 
                 // Initialize GUI
                 nativeFileBrowser0.Path = "";
+                button_IMPORT_SavedLists.Enable = true;
+                enum_SavedLists.SetBalloonTooltipTexts(new string[]{ StoragePath_user, StoragePath_server });
 
                 // Initialize Tree Control (List of predefined Universal Bolt Connections)
                 int default_width = 150;
@@ -287,7 +307,14 @@ namespace UCCreator
                 tree_control0.InsertColumn(4, "Material", default_width);
 
                 // Import stored Bolt Definitions
-                ImportStoredBoltDefinitions();
+                if (File.Exists(StoragePath_user))
+                {
+                    ImportStoredBoltDefinitions(StoragePath_user);
+                }
+                else
+                {
+                    ImportStoredBoltDefinitions(StoragePath_server);
+                }
 
                 // Check value of process level switch
                 switch (enum0.ValueAsString)
@@ -328,6 +355,44 @@ namespace UCCreator
                 else if (block == separator0)
                 {
                     //---------Enter your code here-----------
+                }
+                else if (block == enum_SavedLists)
+                {
+                    //---------Enter your code here-----------
+                }
+                else if (block == button_IMPORT_SavedLists)
+                {
+                    switch (enum_SavedLists.ValueAsString)
+                    {
+                        case "Last used by you":
+                            if (File.Exists(StoragePath_user))
+                            {
+                                ImportStoredBoltDefinitions(StoragePath_user);
+                            }
+                            else
+                            {
+                                theUI.NXMessageBox.Show("Universal Connection Creator", NXMessageBox.DialogType.Error, "No saved User list found to import!");
+                            }
+                            break;
+
+                        case "Default list":
+                            if (File.Exists(StoragePath_server))
+                            {
+                                ImportStoredBoltDefinitions(StoragePath_server);
+                            }
+                            else
+                            {
+                                theUI.NXMessageBox.Show("Universal Connection Creator", NXMessageBox.DialogType.Error, "No saved Default list found to import!");
+                            }
+                            break;
+
+                        default:
+                            break;
+                    }
+                    if (nativeFileBrowser0.Path != "" && File.Exists(nativeFileBrowser0.Path))
+                    {
+                        ImportDefsFromExcel(nativeFileBrowser0.Path);
+                    }
                 }
                 else if (block == nativeFileBrowser0)
                 {
@@ -657,7 +722,7 @@ namespace UCCreator
         /// <summary>
         /// Import last used Bolt Definitions, stored by the previous session
         /// </summary>
-        private void ImportStoredBoltDefinitions()
+        private void ImportStoredBoltDefinitions(string filePath)
         {
             try
             {
@@ -668,11 +733,11 @@ namespace UCCreator
 
                 // Get target file
                 // ---------------
-                // Get target file path to stored Excel file
-                string filePath = System.Reflection.Assembly.GetExecutingAssembly().CodeBase;
-                filePath = filePath.Remove(filePath.LastIndexOf("/")) + "\\" + ExcelStorageName + ".txt";
-                filePath = filePath.Substring(filePath.IndexOf("/")).Substring(3).Replace("/","\\");
-                
+                //// Get target file path to stored Excel file
+                //string filePath = System.Reflection.Assembly.GetExecutingAssembly().CodeBase;
+                //filePath = filePath.Remove(filePath.LastIndexOf("/")) + "\\" + StorageFileName + ".txt";
+                //filePath = filePath.Substring(filePath.IndexOf("/")).Substring(3).Replace("/", "\\");
+
                 //lw.WriteFullline("File path = " + Environment.NewLine +
                 //    filePath);
 
@@ -791,15 +856,19 @@ namespace UCCreator
                     " ----------------------------------------- ");
 
                 // Get target Excel file path
-                string filePath = System.Reflection.Assembly.GetExecutingAssembly().CodeBase;
-                filePath = filePath.Remove(filePath.LastIndexOf("/")) + "\\"+ ExcelStorageName + ".txt";
-                filePath = filePath.Substring(filePath.IndexOf("/")).Substring(3).Replace("/", "\\");
+                //string filePath = System.Reflection.Assembly.GetExecutingAssembly().CodeBase;
+                //filePath = filePath.Remove(filePath.LastIndexOf("/")) + "\\"+ StorageFileName + ".txt";
+                //filePath = filePath.Substring(filePath.IndexOf("/")).Substring(3).Replace("/", "\\");
+                string filePath = StoragePath_user;
 
                 //lw.WriteFullline("Target file path :  " + filePath);
 
                 // Create new Text file
                 if (File.Exists(filePath)) { File.Delete(filePath); }
                 //lw.WriteFullline("Write content...");
+
+                // Check if target Directory exists, if not, try to create it
+                Directory.CreateDirectory(filePath.Remove(filePath.LastIndexOf(@"\")));
 
                 using (StreamWriter sw = File.CreateText(filePath))
                 {
@@ -825,64 +894,6 @@ namespace UCCreator
                 }
 
                 lw.WriteFullline("Saved");
-
-                //// Create new Excel file
-                //Microsoft.Office.Interop.Excel.Application xlApp = new Microsoft.Office.Interop.Excel.Application();
-                //Microsoft.Office.Interop.Excel.Workbook xlWorkbook = xlApp.Workbooks.Add();
-                //Microsoft.Office.Interop.Excel.Worksheet xlWorksheet = xlWorkbook.Sheets[1];
-
-                //// Populate with Node List content
-                //lw.WriteFullline("Write content...");
-                //// Headers
-                //xlWorksheet.Cells[1, 1].Value = "Name";
-                //xlWorksheet.Cells[1, 2].Value = "Shank Diameter [mm]";
-                //xlWorksheet.Cells[1, 3].Value = "Head Diameter [mm]";
-                //xlWorksheet.Cells[1, 4].Value = "Maximum Connection Length [mm]";
-                //xlWorksheet.Cells[1, 5].Value = "Material";
-
-                //lw.WriteFullline("   Added Headers");
-
-                //// Content Rows
-                //int i = 2;
-                //foreach (NXOpen.BlockStyler.Node node in allNodes)
-                //{
-                //    xlWorksheet.Cells[i, 1].Value = node.GetColumnDisplayText(0);
-                //    xlWorksheet.Cells[i, 2].Value = node.GetColumnDisplayText(1);
-                //    xlWorksheet.Cells[i, 3].Value = node.GetColumnDisplayText(2);
-                //    xlWorksheet.Cells[i, 4].Value = node.GetColumnDisplayText(3);
-                //    xlWorksheet.Cells[i, 5].Value = node.GetColumnDisplayText(4);
-
-                //    lw.WriteFullline("   Added Node " + (i - 1).ToString());
-
-                //    i++;
-                //}
-
-
-                //// Save Excel file
-                //if (File.Exists(filePath))
-                //{
-                //    File.Delete(filePath);
-                //}
-                //xlWorkbook.SaveAs(filePath);
-
-                //lw.WriteFullline("Saved Excel file");
-
-                ////cleanup
-                //GC.Collect();
-                //GC.WaitForPendingFinalizers();
-
-                ////release com objects to fully kill excel process from running in the background
-                //Marshal.ReleaseComObject(xlWorksheet);
-
-                ////close and release
-                //xlWorkbook.Close();
-                //Marshal.ReleaseComObject(xlWorkbook);
-
-                ////quit and release
-                //xlApp.Quit();
-                //Marshal.ReleaseComObject(xlApp);
-
-                //lw.WriteFullline("Released: xlWorksheet, xlWorkbook, xlApp");
             }
             catch (Exception e)
             {
