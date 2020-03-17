@@ -1208,11 +1208,7 @@ namespace UCCreator
 
                 // Get existing Universal Connections
                 // ----------------------------------
-                List<string> existingUnivConnNames = new List<string>();
-                foreach (NXOpen.CAE.Connections.IConnection existingConn in myAFEM.BaseFEModel.ConnectionsContainer.GetAllConnections())
-                {
-                    existingUnivConnNames.Add(existingConn.Name.ToUpper());
-                }
+                List<string> existingUnivConnNames = myAFEM.BaseFEModel.ConnectionsContainer.GetAllConnections().Select(x => x.Name).ToList();
 
                 // Loop through all predefined Bolt Definitions
                 foreach (MODELS.BoltDefinition boltDefinition in allBoltDefinitions)
@@ -1222,11 +1218,22 @@ namespace UCCreator
                         // Check if not existing yet
                         if (existingUnivConnNames.Contains(boltDefinition.Name.ToUpper()))
                         {
-                            lw.WriteFullline("   BOLT DEFINITION:  " + boltDefinition.Name.ToUpper() + "  --> exists (skipped)");
-                            continue;
+                            // Delete existing Bolt Connection, to make sure:
+                            // - it can be adapted if the desired properties are different
+                            // - it can be re-generated, but only if the related Selection Recipe has entities in it
+                            theSession.UpdateManager.AddObjectsToDeleteList(new TaggedObject[] {
+                                myAFEM.BaseFEModel.ConnectionsContainer.GetAllConnections().ToList().Single(x => x.Name == boltDefinition.Name)
+                            });
+                            theSession.UpdateManager.DoUpdate(new Session.UndoMarkId());
+                            //continue;
+
+                            lw.WriteFullline("   BOLT DEFINITION:  " + boltDefinition.Name.ToUpper() + "  --> exists (deleted for re-creation)");
+                        }
+                        else
+                        {
+                            lw.WriteFullline("   BOLT DEFINITION:  " + boltDefinition.Name.ToUpper());
                         }
 
-                        lw.WriteFullline("   BOLT DEFINITION:  " + boltDefinition.Name.ToUpper());
 
                         // Check if target Selection Recipe exists and contains any Curves at all
                         // ----------------------------------------------------------------------
@@ -1317,6 +1324,24 @@ namespace UCCreator
                     matfound:;
                         newBoltConn.Material = targMaterial;
                         lw.WriteFullline("      Material        : " + targMaterial.Name);
+
+                        lw.WriteFullline("      CREATE  =  success");
+
+
+                        // Realize new Universal Bolt Connection definition
+                        // ------------------------------------------------
+                        NXOpen.CAE.Connections.Element boltConnElement = myAFEM.BaseFEModel.ConnectionElementCollection.Create(
+                            NXOpen.CAE.Connections.ElementType.E1DSpider,
+                            "Element - " + boltDefinition.Name.ToUpper(),
+                            new NXOpen.CAE.Connections.IConnection[] { newBoltConn });
+
+                        boltConnElement.GenerateElements();
+                        lw.WriteFullline("      Elements generated");
+
+                        myAFEM.BaseFEModel.UpdateFemodel();
+                        lw.WriteFullline("      FEModel updated");
+
+                        lw.WriteFullline("      REALIZE =  success");
                     }
                     catch (Exception er)
                     {
