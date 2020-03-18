@@ -1252,7 +1252,7 @@ namespace UCCreator
 
                         try
                         {
-                            targSelRecipe = myAFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper().Contains(boltDefinition.Name.ToUpper()));
+                            targSelRecipe = myAFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper().Contains(boltDefinition.Name.ToUpper()) && !x.Name.ToLower().Contains("unique"));
                         }
                         catch (Exception e)
                         {
