@@ -60,6 +60,7 @@ namespace UCCreator
                 theUI = UI.GetUI();
                 lw = theSession.ListingWindow;
                 theDlxFileName = "UniversalConnectionCreator.dlx";
+                //theDlxFileName = @"C:\sdevos\ABC NXOpen applications\ABC applications\application\UniversalConnectionCreator.dlx";
                 theDialog = theUI.CreateDialog(theDlxFileName);
                 theDialog.AddUpdateHandler(new NXOpen.BlockStyler.BlockDialog.Update(update_cb));
                 theDialog.AddInitializeHandler(new NXOpen.BlockStyler.BlockDialog.Initialize(initialize_cb));
