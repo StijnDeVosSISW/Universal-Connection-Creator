@@ -59,15 +59,5 @@ namespace UCCreator.Properties {
                 resourceCulture = value;
             }
         }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Byte[].
-        /// </summary>
-        internal static byte[] NXSigningResource {
-            get {
-                object obj = ResourceManager.GetObject("NXSigningResource", resourceCulture);
-                return ((byte[])(obj));
-            }
-        }
     }
 }

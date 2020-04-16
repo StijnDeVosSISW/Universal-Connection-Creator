@@ -127,7 +127,9 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="IMAGES\Logo_UnivConnCreator.ico" />
-    <EmbeddedResource Include="Resources\NXSigningResource.res" />
+    <EmbeddedResource Include="Resources\NXSigningResource.res">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <COMReference Include="Microsoft.Office.Core">
