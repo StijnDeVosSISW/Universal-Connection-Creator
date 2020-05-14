@@ -34,11 +34,9 @@ namespace UCCreator
 
         private static List<NXOpen.BlockStyler.Node> allNodes = new List<Node>();
         private static List<MODELS.BoltDefinition> allBoltDefinitions = new List<MODELS.BoltDefinition>();
-        private enum MenuID
-        {
-            AddNode,
-            DeleteNode
-        };
+        private enum MenuID { AddNode, DeleteNode };
+
+        private enum TargEnv { Production, Debug, Siemens };
 
         private static List<NXOpen.CAE.AssyFemPart> allAFEMs = new List<NXOpen.CAE.AssyFemPart>();
 
@@ -59,9 +57,25 @@ namespace UCCreator
                 theSession = Session.GetSession();
                 theUI = UI.GetUI();
                 lw = theSession.ListingWindow;
-                //theDlxFileName = "UniversalConnectionCreator.dlx";
-                //theDlxFileName = @"C:\sdevos\ABC NXOpen applications\ABC applications\application\UniversalConnectionCreator.dlx";
-                theDlxFileName = @"D:\NX\CAE\UBC\ABC\UniversalConnectionCreator\UniversalConnectionCreator.dlx";
+
+                // Set path to GUI .dlx file
+                TargEnv targEnv = TargEnv.Siemens;
+
+                switch (targEnv)
+                {
+                    case TargEnv.Production:
+                        theDlxFileName = @"D:\NX\CAE\UBC\ABC\UniversalConnectionCreator\UniversalConnectionCreator.dlx";  // IN CPP TC environment as Production tool
+                        break;
+                    case TargEnv.Debug:
+                        theDlxFileName = @"C:\sdevos\ABC NXOpen applications\ABC applications\application\UniversalConnectionCreator.dlx";  // Debug by Stijn in CPP TC environment
+                        break;
+                    case TargEnv.Siemens:
+                        theDlxFileName = "UniversalConnectionCreator.dlx";  // In Siemens TC environment
+                        break;
+                    default:
+                        break;
+                }
+                
                 theDialog = theUI.CreateDialog(theDlxFileName);
                 theDialog.AddUpdateHandler(new NXOpen.BlockStyler.BlockDialog.Update(update_cb));
                 theDialog.AddInitializeHandler(new NXOpen.BlockStyler.BlockDialog.Initialize(initialize_cb));
