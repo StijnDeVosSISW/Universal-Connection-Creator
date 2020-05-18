@@ -39,6 +39,7 @@ namespace UCCreator
         private enum TargEnv { Production, Debug, Siemens };
 
         private static List<NXOpen.CAE.AssyFemPart> allAFEMs = new List<NXOpen.CAE.AssyFemPart>();
+        private static List<NXOpen.CAE.FemPart> allFEMs = new List<NXOpen.CAE.FemPart>();
 
         private static string StorageFileName = "UCCreator_SavedBoltDefinitions";  // Name of Excel file in which content of Universal Conn Def tree will be stored for later use
         private static string StoragePath_server = null;
@@ -59,6 +60,8 @@ namespace UCCreator
                 lw = theSession.ListingWindow;
 
                 // Set path to GUI .dlx file
+                //TargEnv targEnv = TargEnv.Production;
+                //TargEnv targEnv = TargEnv.Debug;
                 TargEnv targEnv = TargEnv.Siemens;
 
                 switch (targEnv)
@@ -1045,6 +1048,44 @@ namespace UCCreator
                     //}
                 }
 
+
+                // UPDATE EACH (normal) FEM, IF NECESSARY
+                // --------------------------------------
+                lw.WriteFullline(Environment.NewLine +
+                    " ------------------------------------------------------ " + Environment.NewLine +
+                    "| Update (normal) FEM objects that have pending update |" + Environment.NewLine +
+                    " ------------------------------------------------------ ");
+
+                foreach (NXOpen.CAE.FemPart myFEM in allFEMs)
+                {
+                    // Set current AFEM to working
+                    theSession.Parts.SetWork(myFEM);
+
+                    // Force "update" status for each Universal Bolt Connection
+                    foreach (NXOpen.CAE.Connections.IConnection myConn in myFEM.BaseFEModel.ConnectionsContainer.GetAllConnections())
+                    {
+                        try
+                        {
+                            // Check if it is a Universal Bolt Connection
+                            NXOpen.CAE.Connections.Bolt myBoltConn = (NXOpen.CAE.Connections.Bolt)myConn;
+
+                            // Force an "update" of the Universal Bolt Connection
+                            myBoltConn.MaxBoltLength.Value++;
+                            myBoltConn.MaxBoltLength.Value--;
+
+                            lw.WriteFullline("   Update forced of:  " + myBoltConn.Name.ToUpper());
+                        }
+                        catch (Exception)
+                        {
+                            // Not a Universal Bolt Connection
+                        }
+                    }
+
+                    // Update AFEM to realize all Universal Bolt Connections
+                    myFEM.BaseFEModel.UpdateFemodel();
+                    lw.WriteFullline("   UPDATED:  " + myFEM.Name.ToUpper());
+                }
+
                 // Set initial working object to working again
                 // -------------------------------------------
                 theSession.Parts.SetWork(currWork);
@@ -1075,7 +1116,7 @@ namespace UCCreator
             CreateSelectionRecipes(myAFEM);
 
             // CREATE UNIVERSAL BOLT CONNECTION DEFINITIONS
-            CreateUniversalBoltConnections(myAFEM);
+            CreateUniversalBoltConnections(myAFEM, null);
 
 
             if (ProcessAll)
@@ -1089,7 +1130,7 @@ namespace UCCreator
                 }
             }
         }
-
+        
 
         /// <summary>
         /// Loop through child components of a target Assembly object and perform an action based on the child component's object type
@@ -1149,11 +1190,16 @@ namespace UCCreator
         /// <param name="myFEM"></param>
         private static void ProcessFromFEM(NXOpen.CAE.FemPart myFEM)
         {
-            //lw.WriteFullline(Environment.NewLine +
-            //    "FEM : " + myFEM.Name.ToString());
+            lw.WriteFullline(Environment.NewLine +
+                "FEM : " + myFEM.Name.ToString());
 
+            allFEMs.Add(myFEM);
 
-            // Do nothing for now...
+            // CREATE SELECTION RECIPES
+            CreateSelectionRecipes(myFEM);
+
+            // CREATE UNIVERSAL BOLT CONNECTION DEFINITIONS
+            CreateUniversalBoltConnections(null, myFEM);
         }
 
 
@@ -1161,7 +1207,7 @@ namespace UCCreator
         /// Create predefined Selection Recipes
         /// </summary>
         /// <param name="myAFEM">Target AFEM object</param>
-        private static void CreateSelectionRecipes(NXOpen.CAE.AssyFemPart myAFEM)
+        private static void CreateSelectionRecipes(NXOpen.CAE.CaePart myAFEM)
         {
             try
             {
@@ -1268,16 +1314,21 @@ namespace UCCreator
         /// Create predefined Universal Bolt Connection definitions
         /// </summary>
         /// <param name="myAFEM">Target AFEM object</param>
-        private static void CreateUniversalBoltConnections(NXOpen.CAE.AssyFemPart myAFEM)
+        private static void CreateUniversalBoltConnections(NXOpen.CAE.AssyFemPart myAFEM, NXOpen.CAE.FemPart myFEM)
         {
             try
             {
                 lw.WriteFullline(Environment.NewLine +
                 "   CREATE UNIVERSAL BOLT CONNECTIONS" + Environment.NewLine);
 
+                // Check whether input is an AFEM or not
+                bool isAFEM = myAFEM != null ? true : false;
+
                 // Set target AFEM to working
                 // --------------------------
-                theSession.Parts.SetWork((NXOpen.BasePart)myAFEM);
+                if (isAFEM) { theSession.Parts.SetWork((NXOpen.BasePart)myAFEM); }
+                else { theSession.Parts.SetWork((NXOpen.BasePart)myFEM); }
+                
 
                 // Initializations
                 // ---------------
@@ -1285,7 +1336,9 @@ namespace UCCreator
 
                 // Get existing Universal Connections
                 // ----------------------------------
-                List<string> existingUnivConnNames = myAFEM.BaseFEModel.ConnectionsContainer.GetAllConnections().Select(x => x.Name).ToList();
+                List<string> existingUnivConnNames = isAFEM 
+                    ? myAFEM.BaseFEModel.ConnectionsContainer.GetAllConnections().Select(x => x.Name).ToList()
+                    : myFEM.BaseFEModel.ConnectionsContainer.GetAllConnections().Select(x => x.Name).ToList();
 
                 // Loop through all predefined Bolt Definitions
                 foreach (MODELS.BoltDefinition boltDefinition in allBoltDefinitions)
@@ -1318,7 +1371,9 @@ namespace UCCreator
 
                         try
                         {
-                            targSelRecipe = myAFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper().Contains(boltDefinition.Name.ToUpper()) && !x.Name.ToLower().Contains("unique"));
+                            targSelRecipe = isAFEM
+                                ? myAFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper().Contains(boltDefinition.Name.ToUpper()) && !x.Name.ToLower().Contains("unique"))
+                                : myFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper().Contains(boltDefinition.Name.ToUpper()) && !x.Name.ToLower().Contains("unique"));
                         }
                         catch (Exception e)
                         {
@@ -1339,16 +1394,26 @@ namespace UCCreator
 
                         // Create Universal Bolt Connection definition (NX12)
                         // --------------------------------------------------
-                        NXOpen.CAE.Connections.Bolt newBoltConn =
-                            (NXOpen.CAE.Connections.Bolt)myAFEM.BaseFEModel.ConnectionsContainer.CreateConnection(NXOpen.CAE.Connections.ConnectionType.Bolt, boltDefinition.Name);
+                        NXOpen.CAE.Connections.Bolt newBoltConn = isAFEM
+                            ? (NXOpen.CAE.Connections.Bolt)myAFEM.BaseFEModel.ConnectionsContainer.CreateConnection(NXOpen.CAE.Connections.ConnectionType.Bolt, boltDefinition.Name)
+                            : (NXOpen.CAE.Connections.Bolt)myFEM.BaseFEModel.ConnectionsContainer.CreateConnection(NXOpen.CAE.Connections.ConnectionType.Bolt, boltDefinition.Name);
 
                         // Set Name
                         newBoltConn.SetName(boltDefinition.Name);
                         lw.WriteFullline("         Name            : " + boltDefinition.Name);
 
                         // Set Targets (Flanges)
-                        newBoltConn.AddFlangeEntities(0, myAFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper() == "GET ALL MESHES").GetEntities());
-                        lw.WriteFullline("         Targets         : " + myAFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper() == "GET ALL MESHES").Name + " (Selection Recipe)");
+                        if (isAFEM) 
+                        {
+                            newBoltConn.AddFlangeEntities(0, myAFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper() == "GET ALL MESHES").GetEntities());
+                            lw.WriteFullline("         Targets         : " + myAFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper() == "GET ALL MESHES").Name + " (Selection Recipe)");
+                        }
+                        else 
+                        {
+                            newBoltConn.AddFlangeEntities(0, myFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper() == "GET ALL MESHES").GetEntities());
+                            lw.WriteFullline("         Targets         : " + myFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper() == "GET ALL MESHES").Name + " (Selection Recipe)");
+                        }
+                        
 
                         // Set Locations
                         newBoltConn.AddLocationSelectionRecipe(0, targSelRecipe);
@@ -1367,28 +1432,39 @@ namespace UCCreator
 
                         // Set Material
                         NXOpen.PhysicalMaterial targMaterial = null;
+                        bool isPhysicalMaterial = isAFEM
+                            ? myAFEM.MaterialManager.PhysicalMaterials.ToArray().Select(x => x.Name).Contains(boltDefinition.MaterialName)
+                            : myFEM.MaterialManager.PhysicalMaterials.ToArray().Select(x => x.Name).Contains(boltDefinition.MaterialName);
                         
-                        if (myAFEM.MaterialManager.PhysicalMaterials.ToArray().Select(x => x.Name).Contains(boltDefinition.MaterialName))
+                        if (isPhysicalMaterial)
                         {
-                            targMaterial = (NXOpen.PhysicalMaterial)myAFEM.MaterialManager.PhysicalMaterials.ToArray().Single(x => x.Name.ToUpper() == boltDefinition.MaterialName.ToUpper());
+                            targMaterial = isAFEM
+                                ? (NXOpen.PhysicalMaterial)myAFEM.MaterialManager.PhysicalMaterials.ToArray().Single(x => x.Name.ToUpper() == boltDefinition.MaterialName.ToUpper())
+                                : (NXOpen.PhysicalMaterial)myFEM.MaterialManager.PhysicalMaterials.ToArray().Single(x => x.Name.ToUpper() == boltDefinition.MaterialName.ToUpper());
                         }
                         else
                         {
                             try
                             {
-                                targMaterial = myAFEM.MaterialManager.PhysicalMaterials.LoadFromNxmatmllibrary(boltDefinition.MaterialName);
+                                targMaterial = isAFEM
+                                    ? myAFEM.MaterialManager.PhysicalMaterials.LoadFromNxmatmllibrary(boltDefinition.MaterialName)
+                                    : myFEM.MaterialManager.PhysicalMaterials.LoadFromNxmatmllibrary(boltDefinition.MaterialName);
                                 goto matfound;
                             }
                             catch (Exception) { }
                             try
                             {
-                                targMaterial = myAFEM.MaterialManager.PhysicalMaterials.LoadFromLegacynxlibrary(boltDefinition.MaterialName);
+                                targMaterial = isAFEM
+                                    ? myAFEM.MaterialManager.PhysicalMaterials.LoadFromLegacynxlibrary(boltDefinition.MaterialName)
+                                    : myFEM.MaterialManager.PhysicalMaterials.LoadFromLegacynxlibrary(boltDefinition.MaterialName);
                                 goto matfound;
                             }
                             catch (Exception) { }
                             try
                             {
-                                targMaterial = myAFEM.MaterialManager.PhysicalMaterials.LoadFromNxlibrary(boltDefinition.MaterialName);
+                                targMaterial = isAFEM
+                                    ? myAFEM.MaterialManager.PhysicalMaterials.LoadFromNxlibrary(boltDefinition.MaterialName)
+                                    : myFEM.MaterialManager.PhysicalMaterials.LoadFromNxlibrary(boltDefinition.MaterialName);
                                 goto matfound;
                             }
                             catch (Exception) { }
@@ -1420,10 +1496,9 @@ namespace UCCreator
                 lw.WriteFullline(Environment.NewLine +
                     "   REALIZE UNIVERSAL BOLT CONNECTIONS");
 
-                NXOpen.CAE.Connections.Element boltConnElement = myAFEM.BaseFEModel.ConnectionElementCollection.Create(
-                    NXOpen.CAE.Connections.ElementType.E1DSpider,
-                    "Element - BOLT DEFINITIONS",
-                    newBoltConnections.ToArray());
+                NXOpen.CAE.Connections.Element boltConnElement = isAFEM
+                    ? myAFEM.BaseFEModel.ConnectionElementCollection.Create(NXOpen.CAE.Connections.ElementType.E1DSpider, "Element - BOLT DEFINITIONS", newBoltConnections.ToArray())
+                    : myFEM.BaseFEModel.ConnectionElementCollection.Create(NXOpen.CAE.Connections.ElementType.E1DSpider, "Element - BOLT DEFINITIONS", newBoltConnections.ToArray());
 
                 boltConnElement.GenerateElements();
                 lw.WriteFullline("      Elements generated");
