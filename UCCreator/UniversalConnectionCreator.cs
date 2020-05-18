@@ -60,9 +60,9 @@ namespace UCCreator
                 lw = theSession.ListingWindow;
 
                 // Set path to GUI .dlx file
-                //TargEnv targEnv = TargEnv.Production;
+                TargEnv targEnv = TargEnv.Production;
                 //TargEnv targEnv = TargEnv.Debug;
-                TargEnv targEnv = TargEnv.Siemens;
+                //TargEnv targEnv = TargEnv.Siemens;
 
                 switch (targEnv)
                 {
