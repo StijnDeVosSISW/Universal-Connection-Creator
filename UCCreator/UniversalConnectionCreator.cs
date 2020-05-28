@@ -15,6 +15,7 @@ namespace UCCreator
         //class members
         private static Session theSession = null;
         private static UI theUI = null;
+        private static NXOpen.UF.UFSession theUfSession = null;
         private static ListingWindow lw = null;
         private string theDlxFileName;
         private NXOpen.BlockStyler.BlockDialog theDialog;
@@ -40,6 +41,7 @@ namespace UCCreator
 
         private static List<NXOpen.CAE.AssyFemPart> allAFEMs = new List<NXOpen.CAE.AssyFemPart>();
         private static List<NXOpen.CAE.FemPart> allFEMs = new List<NXOpen.CAE.FemPart>();
+        private static List<NXOpen.NXObject> allTargObjects = new List<NXObject>();
 
         private static string StorageFileName = "UCCreator_SavedBoltDefinitions";  // Name of Excel file in which content of Universal Conn Def tree will be stored for later use
         private static string StoragePath_server = null;
@@ -57,13 +59,14 @@ namespace UCCreator
             {
                 theSession = Session.GetSession();
                 theUI = UI.GetUI();
+                theUfSession = NXOpen.UF.UFSession.GetUFSession();
                 lw = theSession.ListingWindow;
 
-                // Set path to GUI .dlx file
-                TargEnv targEnv = TargEnv.Production;
+                // Set path to GUI .dlx file 
+                //TargEnv targEnv = TargEnv.Production;
                 //TargEnv targEnv = TargEnv.Debug;
-                //TargEnv targEnv = TargEnv.Siemens;
-                  
+                TargEnv targEnv = TargEnv.Siemens;
+
                 switch (targEnv)
                 {
                     case TargEnv.Production:
@@ -655,6 +658,16 @@ namespace UCCreator
 
         #region CUSTOM METHODS
         /// <summary>
+        /// Writes the defined message in the NX status bar (at the bottom)
+        /// </summary>
+        /// <param name="msg"></param>
+        private void SetNXstatusMessage(string msg)
+        {
+            //theUfSession.Ui.SetStatus(msg);
+            theUfSession.Ui.SetPrompt(msg);
+        }
+
+        /// <summary>
         /// Import predefined Bolt Definitions from an Excel file
         /// </summary>
         /// <param name="filePath">Full path to target Excel file</param>
@@ -954,7 +967,15 @@ namespace UCCreator
                     lw.WriteFullline("   Added Bolt Definition:  " + node.GetColumnDisplayText(0).ToUpper());
                 }
 
+                SetNXstatusMessage("Generated list of predefined bolt connections ...");
+
+
+
+
+
                 // Loop through all (A)FEM objects
+                // -------------------------------
+                // -------------------------------
                 lw.WriteFullline(Environment.NewLine +
                     " --------------------------------- " + Environment.NewLine +
                     "| Loop through all (A)FEM objects |" + Environment.NewLine +
@@ -963,38 +984,45 @@ namespace UCCreator
                 currWork = theSession.Parts.BaseWork;
                 lw.WriteFullline("Current working object :  " + currWork.ToString());
 
+
+                // Get total number of (A)FEM object to process
+                // --------------------------------------------
+                lw.WriteFullline(Environment.NewLine +
+                    "Getting all FEM and AFEM objects to process...");
+                SetNXstatusMessage("Getting all FEM and AFEM objects to process...");
+
                 switch (theSession.Parts.BaseWork.GetType().ToString())
                 {
                     case "NXOpen.CAE.SimPart":
-                        lw.WriteFullline("---> Recognized as SIM");
+                        //lw.WriteFullline("---> Recognized as SIM");
                         NXOpen.CAE.SimPart mySIM = (NXOpen.CAE.SimPart)theSession.Parts.BaseWork;
 
                         switch (mySIM.FemPart.GetType().ToString())
                         {
                             case "NXOpen.CAE.AssyFemPart":
-                                lw.WriteFullline("---> Underlying CAE object = recognized as AFEM");
+                                //lw.WriteFullline("---> Underlying CAE object = recognized as AFEM");
                                 ProcessFromAFEM((NXOpen.CAE.AssyFemPart)mySIM.FemPart);
                                 break;
 
                             case "NXOpen.CAE.FemPart":
-                                lw.WriteFullline("---> Underlying CAE object = recognized as FEM");
+                                //lw.WriteFullline("---> Underlying CAE object = recognized as FEM");
                                 ProcessFromFEM((NXOpen.CAE.FemPart)mySIM.FemPart);
                                 break;
 
                             default:
-                                lw.WriteFullline("---> Underlying CAE object = recognized as " + mySIM.FemPart.GetType().ToString() + " -> SKIPPED");
+                                //lw.WriteFullline("---> Underlying CAE object = recognized as " + mySIM.FemPart.GetType().ToString() + " -> SKIPPED");
                                 break;
                         }
 
                         break;
 
                     case "NXOpen.CAE.AssyFemPart":
-                        lw.WriteFullline("---> Recognized as AFEM");
+                        //lw.WriteFullline("---> Recognized as AFEM");
                         ProcessFromAFEM((NXOpen.CAE.AssyFemPart)theSession.Parts.BaseWork);
                         break;
 
                     case "NXOpen.CAE.FemPart":
-                        lw.WriteFullline("---> Recognized as FEM");
+                        //lw.WriteFullline("---> Recognized as FEM");
                         ProcessFromFEM((NXOpen.CAE.FemPart)theSession.Parts.BaseWork);
                         break;
 
@@ -1005,23 +1033,76 @@ namespace UCCreator
                         break;
                 }
 
+                lw.WriteFullline("   -> # (A)FEM objects to process = " + allTargObjects.Count.ToString());
+
+
+                // Process each target (A)FEM object
+                // ---------------------------------
+                lw.WriteFullline(Environment.NewLine +
+                    "Processing (A)FEM objects...");
+                int i = 0;
+                int tot = allTargObjects.Count;
+                SetNXstatusMessage("Processing (A)FEM objects :   " + i.ToString() + @"/" + tot.ToString() + "  (" + Math.Round(((double)i / tot)*100) + "%)");
+
+                foreach (NXObject targObj in allTargObjects)
+                {
+                    switch (targObj.GetType().ToString())
+                    { 
+                        case "NXOpen.CAE.AssyFemPart":
+                            lw.WriteFullline(Environment.NewLine +
+                                targObj.Name.ToUpper() + Environment.NewLine +
+                                "---> Recognized as AFEM");
+
+                            // CREATE SELECTION RECIPES
+                            CreateSelectionRecipes((NXOpen.CAE.AssyFemPart)targObj);
+
+                            // CREATE UNIVERSAL BOLT CONNECTION DEFINITIONS
+                            CreateUniversalBoltConnections((NXOpen.CAE.AssyFemPart)targObj, null);
+
+                            break;
+
+                        case "NXOpen.CAE.FemPart":
+                            lw.WriteFullline(Environment.NewLine +
+                                targObj.Name.ToUpper() + Environment.NewLine +
+                                "---> Recognized as FEM");
+
+                            // CREATE SELECTION RECIPES
+                            CreateSelectionRecipes((NXOpen.CAE.FemPart)targObj);
+
+                            // CREATE UNIVERSAL BOLT CONNECTION DEFINITIONS
+                            CreateUniversalBoltConnections(null, (NXOpen.CAE.FemPart)targObj);
+
+                            break;
+
+                        default:
+                            break;
+                    }
+
+                    i++;
+                    SetNXstatusMessage("Processing (A)FEM objects :   " + i.ToString() + @"/" + tot.ToString() + "  (" + Math.Round(((double)i / tot)*100) + "%)");
+                }
+
 
                 // UPDATE EACH AFEM, IF NECESSARY
                 // ------------------------------
                 lw.WriteFullline(Environment.NewLine +
-                    " ---------------------------------------------- " + Environment.NewLine +
-                    "| Update AFEM objects that have pending update |" + Environment.NewLine +
-                    " ---------------------------------------------- ");
+                    " ------------------------------------------------ " + Environment.NewLine +
+                    "| Update (A)FEM objects that have pending update |" + Environment.NewLine +
+                    " ------------------------------------------------ ");
 
-                //allAFEMs.Reverse(); // To iterate bottom-up, instead of top-down
+                int j = 0;
+                tot = allTargObjects.Count;
+                SetNXstatusMessage("Updating (A)FEM objects :   " + j.ToString() + @"/" + tot.ToString() + "  (" + Math.Round(((double)j/tot)*100) + "%)");
 
-                foreach (NXOpen.CAE.AssyFemPart myAFEM in allAFEMs)
+                foreach (NXObject targObj in allTargObjects)
                 {
-                    // Set current AFEM to working
-                    theSession.Parts.SetWork(myAFEM);
+                    NXOpen.CAE.BaseFemPart myCAEpart = (NXOpen.CAE.BaseFemPart)targObj;
+
+                    // Set target (A)FEM to working
+                    theSession.Parts.SetWork(myCAEpart);
 
                     // Force "update" status for each Universal Bolt Connection
-                    foreach (NXOpen.CAE.Connections.IConnection myConn in myAFEM.BaseFEModel.ConnectionsContainer.GetAllConnections())
+                    foreach (NXOpen.CAE.Connections.IConnection myConn in myCAEpart.BaseFEModel.ConnectionsContainer.GetAllConnections())
                     {
                         try
                         {
@@ -1043,48 +1124,84 @@ namespace UCCreator
                     // Update AFEM to realize all Universal Bolt Connections
                     //if (myAFEM.BaseFEModel.AskUpdatePending())
                     //{
-                        myAFEM.BaseFEModel.UpdateFemodel();
-                        lw.WriteFullline("   UPDATED:  " + myAFEM.Name.ToUpper());
+                    myCAEpart.BaseFEModel.UpdateFemodel();
+                    lw.WriteFullline("   UPDATED:  " + myCAEpart.Name.ToUpper());
                     //}
+
+                    j++;
+                    SetNXstatusMessage("Updating (A)FEM objects :   " + j.ToString() + @"/" + tot.ToString() + "  (" + Math.Round(((double)j / tot)*100) + "%)");
                 }
+                 
+                //foreach (NXOpen.CAE.AssyFemPart myAFEM in allAFEMs)
+                //{
+                //    // Set current AFEM to working
+                //    theSession.Parts.SetWork(myAFEM);
+
+                //    // Force "update" status for each Universal Bolt Connection
+                //    foreach (NXOpen.CAE.Connections.IConnection myConn in myAFEM.BaseFEModel.ConnectionsContainer.GetAllConnections())
+                //    {
+                //        try
+                //        {
+                //            // Check if it is a Universal Bolt Connection
+                //            NXOpen.CAE.Connections.Bolt myBoltConn = (NXOpen.CAE.Connections.Bolt)myConn;
+
+                //            // Force an "update" of the Universal Bolt Connection
+                //            myBoltConn.MaxBoltLength.Value++;
+                //            myBoltConn.MaxBoltLength.Value--;
+
+                //            lw.WriteFullline("   Update forced of:  " + myBoltConn.Name.ToUpper());
+                //        }
+                //        catch (Exception)
+                //        {
+                //            // Not a Universal Bolt Connection
+                //        }
+                //    }
+
+                //    // Update AFEM to realize all Universal Bolt Connections
+                //    //if (myAFEM.BaseFEModel.AskUpdatePending())
+                //    //{
+                //        myAFEM.BaseFEModel.UpdateFemodel();
+                //        lw.WriteFullline("   UPDATED:  " + myAFEM.Name.ToUpper());
+                //    //}
+                //}
 
 
-                // UPDATE EACH (normal) FEM, IF NECESSARY
-                // --------------------------------------
-                lw.WriteFullline(Environment.NewLine +
-                    " ------------------------------------------------------ " + Environment.NewLine +
-                    "| Update (normal) FEM objects that have pending update |" + Environment.NewLine +
-                    " ------------------------------------------------------ ");
+                //// UPDATE EACH (normal) FEM, IF NECESSARY
+                //// --------------------------------------
+                //lw.WriteFullline(Environment.NewLine +
+                //    " ------------------------------------------------------ " + Environment.NewLine +
+                //    "| Update (normal) FEM objects that have pending update |" + Environment.NewLine +
+                //    " ------------------------------------------------------ ");
 
-                foreach (NXOpen.CAE.FemPart myFEM in allFEMs)
-                {
-                    // Set current AFEM to working
-                    theSession.Parts.SetWork(myFEM);
+                //foreach (NXOpen.CAE.FemPart myFEM in allFEMs)
+                //{
+                //    // Set current AFEM to working
+                //    theSession.Parts.SetWork(myFEM);
 
-                    // Force "update" status for each Universal Bolt Connection
-                    foreach (NXOpen.CAE.Connections.IConnection myConn in myFEM.BaseFEModel.ConnectionsContainer.GetAllConnections())
-                    {
-                        try
-                        {
-                            // Check if it is a Universal Bolt Connection
-                            NXOpen.CAE.Connections.Bolt myBoltConn = (NXOpen.CAE.Connections.Bolt)myConn;
+                //    // Force "update" status for each Universal Bolt Connection
+                //    foreach (NXOpen.CAE.Connections.IConnection myConn in myFEM.BaseFEModel.ConnectionsContainer.GetAllConnections())
+                //    {
+                //        try
+                //        {
+                //            // Check if it is a Universal Bolt Connection
+                //            NXOpen.CAE.Connections.Bolt myBoltConn = (NXOpen.CAE.Connections.Bolt)myConn;
 
-                            // Force an "update" of the Universal Bolt Connection
-                            myBoltConn.MaxBoltLength.Value++;
-                            myBoltConn.MaxBoltLength.Value--;
+                //            // Force an "update" of the Universal Bolt Connection
+                //            myBoltConn.MaxBoltLength.Value++;
+                //            myBoltConn.MaxBoltLength.Value--;
 
-                            lw.WriteFullline("   Update forced of:  " + myBoltConn.Name.ToUpper());
-                        }
-                        catch (Exception)
-                        {
-                            // Not a Universal Bolt Connection
-                        }
-                    }
+                //            lw.WriteFullline("   Update forced of:  " + myBoltConn.Name.ToUpper());
+                //        }
+                //        catch (Exception)
+                //        {
+                //            // Not a Universal Bolt Connection
+                //        }
+                //    }
 
-                    // Update AFEM to realize all Universal Bolt Connections
-                    myFEM.BaseFEModel.UpdateFemodel();
-                    lw.WriteFullline("   UPDATED:  " + myFEM.Name.ToUpper());
-                }
+                //    // Update AFEM to realize all Universal Bolt Connections
+                //    myFEM.BaseFEModel.UpdateFemodel();
+                //    lw.WriteFullline("   UPDATED:  " + myFEM.Name.ToUpper());
+                //}
 
                 // Set initial working object to working again
                 // -------------------------------------------
@@ -1107,16 +1224,16 @@ namespace UCCreator
         /// <param name="myAFEM">Target AFEM object</param>
         private static void ProcessFromAFEM(NXOpen.CAE.AssyFemPart myAFEM)
         {
-            lw.WriteFullline(Environment.NewLine +
-                "AFEM : " + myAFEM.Name.ToString());
+            lw.WriteFullline("(AFEM) : " + myAFEM.Name.ToString());
 
             allAFEMs.Add(myAFEM);
+            allTargObjects.Add(myAFEM);
 
-            // CREATE SELECTION RECIPES
-            CreateSelectionRecipes(myAFEM);
+            //// CREATE SELECTION RECIPES
+            //CreateSelectionRecipes(myAFEM);
 
-            // CREATE UNIVERSAL BOLT CONNECTION DEFINITIONS
-            CreateUniversalBoltConnections(myAFEM, null);
+            //// CREATE UNIVERSAL BOLT CONNECTION DEFINITIONS
+            //CreateUniversalBoltConnections(myAFEM, null);
 
 
             if (ProcessAll)
@@ -1194,12 +1311,13 @@ namespace UCCreator
                 "FEM : " + myFEM.Name.ToString());
 
             allFEMs.Add(myFEM);
+            allTargObjects.Add(myFEM);
 
-            // CREATE SELECTION RECIPES
-            CreateSelectionRecipes(myFEM);
+            //// CREATE SELECTION RECIPES
+            //CreateSelectionRecipes(myFEM);
 
-            // CREATE UNIVERSAL BOLT CONNECTION DEFINITIONS
-            CreateUniversalBoltConnections(null, myFEM);
+            //// CREATE UNIVERSAL BOLT CONNECTION DEFINITIONS
+            //CreateUniversalBoltConnections(null, myFEM);
         }
 
 
