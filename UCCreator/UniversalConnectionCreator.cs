@@ -55,6 +55,7 @@ namespace UCCreator
         // Diagnostic variables
         private static System.Diagnostics.Stopwatch myStopwatch = null;
         private List<double> ExecutionTimes = new List<double>();
+        private string log = "";
 
         //------------------------------------------------------------------------------
         //Constructor for NX Styler class
@@ -684,6 +685,15 @@ namespace UCCreator
         }
 
         /// <summary>
+        /// Write to log content
+        /// </summary>
+        /// <param name="msg"></param>
+        private void WriteToLog(string msg)
+        {
+            log += msg + Environment.NewLine;
+        }
+
+        /// <summary>
         /// Hides all objects in the NX/SC session
         /// </summary>
         private void HideAllObjects()
@@ -1217,6 +1227,7 @@ namespace UCCreator
                 lw.WriteFullline("!ERROR occurred: " + Environment.NewLine +
                     e.ToString());
 
+                lw.WriteFullline(log);
                 lw.Open();
             }
         }
