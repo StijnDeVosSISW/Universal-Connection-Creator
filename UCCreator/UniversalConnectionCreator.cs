@@ -12,11 +12,13 @@ namespace UCCreator
 {
     public class UniversalConnectionCreator
     {
-        //class members
+        // Initializations
         private static Session theSession = null;
         private static UI theUI = null;
         private static NXOpen.UF.UFSession theUfSession = null;
         private static ListingWindow lw = null;
+
+        // GUI variables
         private string theDlxFileName;
         private NXOpen.BlockStyler.BlockDialog theDialog;
         private NXOpen.BlockStyler.Group group0;// Block type: Group
@@ -33,14 +35,14 @@ namespace UCCreator
         private NXOpen.BlockStyler.Enumeration enum0;// Block type: Enumeration
         private NXOpen.BlockStyler.Button button_CREATE;// Block type: Button
 
+        // TreeList variables
         private static List<NXOpen.BlockStyler.Node> allNodes = new List<Node>();
         private static List<MODELS.BoltDefinition> allBoltDefinitions = new List<MODELS.BoltDefinition>();
         private enum MenuID { AddNode, DeleteNode };
 
+        // Application specific variables
         private enum TargEnv { Production, Debug, Siemens };
 
-        private static List<NXOpen.CAE.AssyFemPart> allAFEMs = new List<NXOpen.CAE.AssyFemPart>();
-        private static List<NXOpen.CAE.FemPart> allFEMs = new List<NXOpen.CAE.FemPart>();
         private static List<NXOpen.NXObject> allTargObjects = new List<NXObject>();
 
         private static string StorageFileName = "UCCreator_SavedBoltDefinitions";  // Name of Excel file in which content of Universal Conn Def tree will be stored for later use
@@ -49,6 +51,10 @@ namespace UCCreator
 
         private static bool ProcessAll = true;
         private static NXOpen.BasePart currWork = null;
+
+        // Diagnostic variables
+        private static System.Diagnostics.Stopwatch myStopwatch = null;
+        private List<double> ExecutionTimes = new List<double>();
 
         //------------------------------------------------------------------------------
         //Constructor for NX Styler class
@@ -61,11 +67,12 @@ namespace UCCreator
                 theUI = UI.GetUI();
                 theUfSession = NXOpen.UF.UFSession.GetUFSession();
                 lw = theSession.ListingWindow;
+                myStopwatch = new System.Diagnostics.Stopwatch();
 
                 // Set path to GUI .dlx file 
                 //TargEnv targEnv = TargEnv.Production;
-                //TargEnv targEnv = TargEnv.Debug;
-                TargEnv targEnv = TargEnv.Siemens;
+                TargEnv targEnv = TargEnv.Debug;
+                //TargEnv targEnv = TargEnv.Siemens;
 
                 switch (targEnv)
                 {
@@ -457,11 +464,17 @@ namespace UCCreator
                 }
                 else if (block == button_CREATE)
                 {
+                    // Hide all objects
+                    HideAllObjects();
+
                     // Execute Universal Bolt Connection creation
                     ExecuteBoltGeneration();
 
                     // Store current Tree List content to use in next session
                     StoreUnivConnList();
+
+                    // Show all objects
+                    ShowAllObjects();
                 }
             }
             catch (Exception ex)
@@ -475,6 +488,7 @@ namespace UCCreator
         //------------------------------------------------------------------------------
         //Treelist specific callbacks
         //------------------------------------------------------------------------------
+        #region TREELIST CALLBACKS
         //public void OnExpandCallback(NXOpen.BlockStyler.Tree tree, NXOpen.BlockStyler.Node node)
         //{
         //}
@@ -497,7 +511,7 @@ namespace UCCreator
 
         public void OnSelectcallback(NXOpen.BlockStyler.Tree tree, NXOpen.BlockStyler.Node node, int columnID, bool Selected)
         {
-            
+
         }
 
         //public void OnStateChangecallback(NXOpen.BlockStyler.Tree tree, NXOpen.BlockStyler.Node node, int State)
@@ -609,7 +623,7 @@ namespace UCCreator
 
                     tree.DeleteNode(node[0]);
                     allNodes.Remove(node[0]);
-                    
+
                     break;
                 case Node.DropType.BeforeAndAfter:
                     break;
@@ -626,6 +640,8 @@ namespace UCCreator
         //public void OnDefaultActionCallback(NXOpen.BlockStyler.Tree tree, NXOpen.BlockStyler.Node node, int columnID)
         //{
         //}
+        #endregion
+
 
         //------------------------------------------------------------------------------
         //StringBlock specific callbacks
@@ -664,7 +680,25 @@ namespace UCCreator
         private void SetNXstatusMessage(string msg)
         {
             //theUfSession.Ui.SetStatus(msg);
-            theUfSession.Ui.SetPrompt(msg);
+            theUfSession.Ui.SetPrompt("ABC CREATOR | " + msg);
+        }
+
+        /// <summary>
+        /// Hides all objects in the NX/SC session
+        /// </summary>
+        private void HideAllObjects()
+        {
+            theSession.DisplayManager.HideByType("SHOW_HIDE_TYPE_ALL", NXOpen.DisplayManager.ShowHideScope.AnyInAssembly);
+            theSession.UpdateManager.DoUpdate(new Session.UndoMarkId());
+        }
+
+        /// <summary>
+        /// Shows all objects in the NX/SC session
+        /// </summary>
+        private void ShowAllObjects()
+        {
+            theSession.DisplayManager.ShowByType("SHOW_HIDE_TYPE_ALL", NXOpen.DisplayManager.ShowHideScope.AnyInAssembly);
+            theSession.UpdateManager.DoUpdate(new Session.UndoMarkId());
         }
 
         /// <summary>
@@ -948,7 +982,11 @@ namespace UCCreator
                     "| EXECUTE BOLT GENERATION |" + Environment.NewLine +
                     " ------------------------- ");
 
+                #region CREATE LIST OF PREDEFINED BOLT CONNECTIONS
+                // ------------------------------------------
                 // CREATE LIST OF PREDEFINED BOLT CONNECTIONS
+                // ------------------------------------------
+                myStopwatch.Restart();
                 lw.WriteFullline("Generate list of predefined Bolt Connections...");
 
                 allBoltDefinitions.Clear();
@@ -969,24 +1007,26 @@ namespace UCCreator
 
                 SetNXstatusMessage("Generated list of predefined bolt connections ...");
 
+                myStopwatch.Stop();
+                lw.WriteFullline("[" + myStopwatch.Elapsed.TotalSeconds.ToString() + " seconds]");
+                ExecutionTimes.Add(myStopwatch.Elapsed.TotalSeconds);
+                #endregion
 
 
-
-
-                // Loop through all (A)FEM objects
-                // -------------------------------
-                // -------------------------------
+                #region GATHER ALL (A)FEM OBJECTS TO PROCESS
+                // ------------------------------------
+                // GATHER ALL (A)FEM OBJECTS TO PROCESS
+                // ------------------------------------
+                myStopwatch.Restart();
                 lw.WriteFullline(Environment.NewLine +
-                    " --------------------------------- " + Environment.NewLine +
-                    "| Loop through all (A)FEM objects |" + Environment.NewLine +
-                    " --------------------------------- ");
+                    " --------------------------- " + Environment.NewLine +
+                    "| Gather all (A)FEM objects |" + Environment.NewLine +
+                    " --------------------------- ");
 
                 currWork = theSession.Parts.BaseWork;
                 lw.WriteFullline("Current working object :  " + currWork.ToString());
 
 
-                // Get total number of (A)FEM object to process
-                // --------------------------------------------
                 lw.WriteFullline(Environment.NewLine +
                     "Getting all FEM and AFEM objects to process...");
                 SetNXstatusMessage("Getting all FEM and AFEM objects to process...");
@@ -1035,19 +1075,29 @@ namespace UCCreator
 
                 lw.WriteFullline("   -> # (A)FEM objects to process = " + allTargObjects.Count.ToString());
 
+                myStopwatch.Stop();
+                lw.WriteFullline("[" + myStopwatch.Elapsed.TotalSeconds.ToString() + " seconds]");
+                ExecutionTimes.Add(myStopwatch.Elapsed.TotalSeconds);
+                #endregion
 
-                // Process each target (A)FEM object
-                // ---------------------------------
+
+                #region PROCESS EACH (A)FEM OBJECT
+                // --------------------------
+                // PROCESS EACH (A)FEM OBJECT
+                // --------------------------
+                myStopwatch.Restart();
                 lw.WriteFullline(Environment.NewLine +
                     "Processing (A)FEM objects...");
-                int i = 0;
+                int i = 1;
                 int tot = allTargObjects.Count;
-                SetNXstatusMessage("Processing (A)FEM objects :   " + i.ToString() + @"/" + tot.ToString() + "  (" + Math.Round(((double)i / tot)*100) + "%)");
 
                 foreach (NXObject targObj in allTargObjects)
                 {
+                    SetNXstatusMessage("Processing (A)FEM objects :   " + i.ToString() + @"/" + tot.ToString() + "  (" + Math.Round(((double)i / tot) * 100) + "%)    " +
+                        "[" + targObj.Name + "]");
+
                     switch (targObj.GetType().ToString())
-                    { 
+                    {
                         case "NXOpen.CAE.AssyFemPart":
                             lw.WriteFullline(Environment.NewLine +
                                 targObj.Name.ToUpper() + Environment.NewLine +
@@ -1079,26 +1129,36 @@ namespace UCCreator
                     }
 
                     i++;
-                    SetNXstatusMessage("Processing (A)FEM objects :   " + i.ToString() + @"/" + tot.ToString() + "  (" + Math.Round(((double)i / tot)*100) + "%)");
+
                 }
 
+                myStopwatch.Stop();
+                lw.WriteFullline("[" + myStopwatch.Elapsed.TotalSeconds.ToString() + " seconds]");
+                ExecutionTimes.Add(myStopwatch.Elapsed.TotalSeconds);
+                #endregion
 
-                // UPDATE EACH AFEM, IF NECESSARY
-                // ------------------------------
+
+                #region UPDATE EACH (A)FEM OBJECT
+                // -------------------------
+                // UPDATE EACH (A)FEM OBJECT
+                // -------------------------
+                myStopwatch.Restart();
                 lw.WriteFullline(Environment.NewLine +
                     " ------------------------------------------------ " + Environment.NewLine +
                     "| Update (A)FEM objects that have pending update |" + Environment.NewLine +
                     " ------------------------------------------------ ");
 
-                int j = 0;
+                int j = 1;
                 tot = allTargObjects.Count;
-                SetNXstatusMessage("Updating (A)FEM objects :   " + j.ToString() + @"/" + tot.ToString() + "  (" + Math.Round(((double)j/tot)*100) + "%)");
 
                 foreach (NXObject targObj in allTargObjects)
                 {
-                    NXOpen.CAE.BaseFemPart myCAEpart = (NXOpen.CAE.BaseFemPart)targObj;
+                    SetNXstatusMessage("Updating (A)FEM objects :   " + j.ToString() + @"/" + tot.ToString() + "  (" + Math.Round(((double)j / tot) * 100) + "%)    " +
+                        "[" + targObj.Name + "]");
+
 
                     // Set target (A)FEM to working
+                    NXOpen.CAE.BaseFemPart myCAEpart = (NXOpen.CAE.BaseFemPart)targObj;
                     theSession.Parts.SetWork(myCAEpart);
 
                     // Force "update" status for each Universal Bolt Connection
@@ -1129,85 +1189,28 @@ namespace UCCreator
                     //}
 
                     j++;
-                    SetNXstatusMessage("Updating (A)FEM objects :   " + j.ToString() + @"/" + tot.ToString() + "  (" + Math.Round(((double)j / tot)*100) + "%)");
                 }
-                 
-                //foreach (NXOpen.CAE.AssyFemPart myAFEM in allAFEMs)
-                //{
-                //    // Set current AFEM to working
-                //    theSession.Parts.SetWork(myAFEM);
 
-                //    // Force "update" status for each Universal Bolt Connection
-                //    foreach (NXOpen.CAE.Connections.IConnection myConn in myAFEM.BaseFEModel.ConnectionsContainer.GetAllConnections())
-                //    {
-                //        try
-                //        {
-                //            // Check if it is a Universal Bolt Connection
-                //            NXOpen.CAE.Connections.Bolt myBoltConn = (NXOpen.CAE.Connections.Bolt)myConn;
+                myStopwatch.Stop();
+                lw.WriteFullline("[" + myStopwatch.Elapsed.TotalSeconds.ToString() + " seconds]");
+                ExecutionTimes.Add(myStopwatch.Elapsed.TotalSeconds);
+                #endregion
 
-                //            // Force an "update" of the Universal Bolt Connection
-                //            myBoltConn.MaxBoltLength.Value++;
-                //            myBoltConn.MaxBoltLength.Value--;
-
-                //            lw.WriteFullline("   Update forced of:  " + myBoltConn.Name.ToUpper());
-                //        }
-                //        catch (Exception)
-                //        {
-                //            // Not a Universal Bolt Connection
-                //        }
-                //    }
-
-                //    // Update AFEM to realize all Universal Bolt Connections
-                //    //if (myAFEM.BaseFEModel.AskUpdatePending())
-                //    //{
-                //        myAFEM.BaseFEModel.UpdateFemodel();
-                //        lw.WriteFullline("   UPDATED:  " + myAFEM.Name.ToUpper());
-                //    //}
-                //}
-
-
-                //// UPDATE EACH (normal) FEM, IF NECESSARY
-                //// --------------------------------------
-                //lw.WriteFullline(Environment.NewLine +
-                //    " ------------------------------------------------------ " + Environment.NewLine +
-                //    "| Update (normal) FEM objects that have pending update |" + Environment.NewLine +
-                //    " ------------------------------------------------------ ");
-
-                //foreach (NXOpen.CAE.FemPart myFEM in allFEMs)
-                //{
-                //    // Set current AFEM to working
-                //    theSession.Parts.SetWork(myFEM);
-
-                //    // Force "update" status for each Universal Bolt Connection
-                //    foreach (NXOpen.CAE.Connections.IConnection myConn in myFEM.BaseFEModel.ConnectionsContainer.GetAllConnections())
-                //    {
-                //        try
-                //        {
-                //            // Check if it is a Universal Bolt Connection
-                //            NXOpen.CAE.Connections.Bolt myBoltConn = (NXOpen.CAE.Connections.Bolt)myConn;
-
-                //            // Force an "update" of the Universal Bolt Connection
-                //            myBoltConn.MaxBoltLength.Value++;
-                //            myBoltConn.MaxBoltLength.Value--;
-
-                //            lw.WriteFullline("   Update forced of:  " + myBoltConn.Name.ToUpper());
-                //        }
-                //        catch (Exception)
-                //        {
-                //            // Not a Universal Bolt Connection
-                //        }
-                //    }
-
-                //    // Update AFEM to realize all Universal Bolt Connections
-                //    myFEM.BaseFEModel.UpdateFemodel();
-                //    lw.WriteFullline("   UPDATED:  " + myFEM.Name.ToUpper());
-                //}
 
                 // Set initial working object to working again
                 // -------------------------------------------
                 theSession.Parts.SetWork(currWork);
 
                 //lw.Open();
+
+                // Diagnostics
+                lw.WriteFullline(Environment.NewLine +
+                    "DIAGNOSTICS" + Environment.NewLine +
+                    "-----------" + Environment.NewLine +
+                    "CREATE LIST OF PREDEFINED BOLT CONNECTIONS =  " + ExecutionTimes[0].ToString() + " seconds" + Environment.NewLine +
+                    "GATHER ALL (A)FEM OBJECTS TO PROCESS       =  " + ExecutionTimes[1].ToString() + " seconds" + Environment.NewLine +
+                    "PROCESS EACH (A)FEM OBJECT                 =  " + ExecutionTimes[2].ToString() + " seconds" + Environment.NewLine +
+                    "UPDATE EACH (A)FEM OBJECT                  =  " + ExecutionTimes[3].ToString() + " seconds");
             }
             catch (Exception e)
             {
@@ -1226,15 +1229,7 @@ namespace UCCreator
         {
             lw.WriteFullline("(AFEM) : " + myAFEM.Name.ToString());
 
-            allAFEMs.Add(myAFEM);
             allTargObjects.Add(myAFEM);
-
-            //// CREATE SELECTION RECIPES
-            //CreateSelectionRecipes(myAFEM);
-
-            //// CREATE UNIVERSAL BOLT CONNECTION DEFINITIONS
-            //CreateUniversalBoltConnections(myAFEM, null);
-
 
             if (ProcessAll)
             {
@@ -1307,17 +1302,9 @@ namespace UCCreator
         /// <param name="myFEM"></param>
         private static void ProcessFromFEM(NXOpen.CAE.FemPart myFEM)
         {
-            lw.WriteFullline(Environment.NewLine +
-                "FEM : " + myFEM.Name.ToString());
+            lw.WriteFullline("(FEM)  : " + myFEM.Name.ToString()); 
 
-            allFEMs.Add(myFEM);
             allTargObjects.Add(myFEM);
-
-            //// CREATE SELECTION RECIPES
-            //CreateSelectionRecipes(myFEM);
-
-            //// CREATE UNIVERSAL BOLT CONNECTION DEFINITIONS
-            //CreateUniversalBoltConnections(null, myFEM);
         }
 
 
