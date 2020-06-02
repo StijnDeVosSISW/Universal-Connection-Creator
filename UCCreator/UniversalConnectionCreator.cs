@@ -55,7 +55,7 @@ namespace UCCreator
         // Diagnostic variables
         private static System.Diagnostics.Stopwatch myStopwatch = null;
         private List<double> ExecutionTimes = new List<double>();
-        private string log = "";
+        private static string log = "";
 
         //------------------------------------------------------------------------------
         //Constructor for NX Styler class
@@ -316,12 +316,12 @@ namespace UCCreator
             try
             {
                 // Initialize ListingWindow
-                lw.WriteFullline(
+                log += 
                 " ------------------------------ " + Environment.NewLine +
                 " ------------------------------ " + Environment.NewLine +
                 "| UNIVERSAL CONNECTION CREATOR |" + Environment.NewLine +
                 " ------------------------------ " + Environment.NewLine +
-                " ------------------------------ " + Environment.NewLine);
+                " ------------------------------ " + Environment.NewLine + Environment.NewLine;
 
                 lw.Open();
 
@@ -447,7 +447,7 @@ namespace UCCreator
                 }
                 else if (block == enum0)
                 {
-                    //lw.WriteFullline("enum0.ValueAsString = " + enum0.ValueAsString);
+                    //log += "enum0.ValueAsString = " + enum0.ValueAsString);
 
                     switch (enum0.ValueAsString)
                     {
@@ -476,6 +476,11 @@ namespace UCCreator
 
                     // Show all objects
                     ShowAllObjects();
+
+                    // Show log
+                    if (lw.IsOpen) { lw.Close(); }
+                    lw.Open();
+                    lw.WriteFullline(log);
                 }
             }
             catch (Exception ex)
@@ -719,12 +724,12 @@ namespace UCCreator
         {
             try
             {
-                lw.WriteFullline(Environment.NewLine +
+                log += Environment.NewLine +
                     " ----------------------------------------- " + Environment.NewLine +
                     "| IMPORT BOLT DEFINITIONS FROM EXCEL FILE |" + Environment.NewLine +
-                    " ----------------------------------------- ");
+                    " ----------------------------------------- " + Environment.NewLine;
 
-                lw.WriteFullline("Input Excel file  :  " + filePath);
+                log += "Input Excel file  :  " + filePath + Environment.NewLine;
 
                 // Clear all existing nodes and BoltDefinition objects
                 foreach (NXOpen.BlockStyler.Node myNode in allNodes)
@@ -733,7 +738,7 @@ namespace UCCreator
                 }
                 allNodes.Clear();
 
-                lw.WriteFullline(Environment.NewLine + "Delete existing Bolt Definitions :  SUCCESS");
+                log += Environment.NewLine + "Delete existing Bolt Definitions :  SUCCESS" + Environment.NewLine;
 
                 // Create COM objects to use Excel to read the input Excel file
                 Microsoft.Office.Interop.Excel.Application xlApp = new Microsoft.Office.Interop.Excel.Application();
@@ -745,7 +750,7 @@ namespace UCCreator
                 // -> start at i = 2, because first row in Excel sheet are the column headers! (Excel is NOT zero-based)
                 for (int i = 2; i < (targRange.Rows.Count+1); i++)
                 {
-                    lw.WriteFullline(Environment.NewLine + "IMPORTING: Bolt Definition " + (i - 1).ToString());
+                    log += Environment.NewLine + "IMPORTING: Bolt Definition " + (i - 1).ToString() + Environment.NewLine;
                     // Add new node to Tree List
                     NXOpen.BlockStyler.Node newNode = tree_control0.CreateNode("<new>");
                     tree_control0.InsertNode(newNode, null, null, Tree.NodeInsertOption.Last);
@@ -758,16 +763,16 @@ namespace UCCreator
 
                     allNodes.Add(newNode);
 
-                    lw.WriteFullline("   New node created with:" + Environment.NewLine +
+                    log += "   New node created with:" + Environment.NewLine +
                         "   Name                           = " + newNode.GetColumnDisplayText(0) + Environment.NewLine +
                         "   Shank Diameter [mm]            = " + newNode.GetColumnDisplayText(1) + Environment.NewLine +
                         "   Head Diameter [mm]             = " + newNode.GetColumnDisplayText(2) + Environment.NewLine +
                         "   Maximum Connection Length [mm] = " + newNode.GetColumnDisplayText(3) + Environment.NewLine +
-                        "   Material Name                  = " + newNode.GetColumnDisplayText(4) + Environment.NewLine);
+                        "   Material Name                  = " + newNode.GetColumnDisplayText(4) + Environment.NewLine + Environment.NewLine;
 
                     //for (int j = 1; j < (targRange.Columns.Count+1); j++)
                     //{
-                    //    lw.WriteFullline("  Cell[" + i.ToString() + "," + j.ToString() + "] = " + targRange.Cells[i, j].Value);
+                    //    log += "  Cell[" + i.ToString() + "," + j.ToString() + "] = " + targRange.Cells[i, j].Value);
                     //    //newNode.SetColumnDisplayText(j, targRange.Cells[i, j].Value);
                     //}
                 }
@@ -788,12 +793,12 @@ namespace UCCreator
                 xlApp.Quit();
                 Marshal.ReleaseComObject(xlApp);
 
-                lw.WriteFullline("Released: targRange, xlWorksheet, xlWorkbook, xlApp");
+                log += "Released: targRange, xlWorksheet, xlWorkbook, xlApp" + Environment.NewLine;
             }
             catch (Exception e)
             {
-                lw.WriteFullline("!ERROR occurred: " + Environment.NewLine +
-                    e.ToString());
+                log += "!ERROR occurred: " + Environment.NewLine +
+                    e.ToString() + Environment.NewLine;
             }
         }
 
@@ -804,10 +809,10 @@ namespace UCCreator
         {
             try
             {
-                //lw.WriteFullline(Environment.NewLine +
+                //log += Environment.NewLine +
                 //    " -------------------------------- " + Environment.NewLine +
                 //    "| IMPORT STORED BOLT DEFINITIONS |" + Environment.NewLine +
-                //    " -------------------------------- ");
+                //    " -------------------------------- " + Environment.NewLine;
 
                 // Get target file
                 // ---------------
@@ -816,13 +821,13 @@ namespace UCCreator
                 //filePath = filePath.Remove(filePath.LastIndexOf("/")) + "\\" + StorageFileName + ".txt";
                 //filePath = filePath.Substring(filePath.IndexOf("/")).Substring(3).Replace("/", "\\");
 
-                //lw.WriteFullline("File path = " + Environment.NewLine +
+                //log += "File path = " + Environment.NewLine +
                 //    filePath);
 
                 // Check if it exists
                 if (!File.Exists(filePath))
                 {
-                    lw.WriteFullline("No stored bolt definitions could be found:  continue...");
+                    log += "No stored bolt definitions could be found:  continue..." + Environment.NewLine;
                     return;
                 }
 
@@ -845,7 +850,7 @@ namespace UCCreator
                 {
                     if (!line.Contains("DIAMETER") && line != "") // Makes sure we don't process the header content and that line content is not nothing
                     {
-                        //lw.WriteFullline("   PROCESSING:  " + line);
+                        //log += "   PROCESSING:  " + line + Environment.NewLine;
                         string currLine = line;
                         MODELS.BoltDefinition newBoltDefinition = new MODELS.BoltDefinition();
 
@@ -882,13 +887,13 @@ namespace UCCreator
                 }
                 allNodes.Clear();
 
-                //lw.WriteFullline(Environment.NewLine + "Delete existing Bolt Definitions :  SUCCESS");
+                //log += Environment.NewLine + "Delete existing Bolt Definitions :  SUCCESS" + Environment.NewLine;
 
                 // Import new Bolt Definitions
                 int i = 1;
                 foreach (MODELS.BoltDefinition boltDefinition in currBoltDefinitions)
                 {
-                    //lw.WriteFullline(Environment.NewLine + "IMPORTING: Bolt Definition " + i.ToString());
+                    //log += Environment.NewLine + "IMPORTING: Bolt Definition " + i.ToString() + Environment.NewLine;
 
                     // Add new node to Tree List
                     NXOpen.BlockStyler.Node newNode = tree_control0.CreateNode("<new>");
@@ -902,22 +907,22 @@ namespace UCCreator
 
                     allNodes.Add(newNode);
 
-                    //lw.WriteFullline("   New node created with:" + Environment.NewLine +
+                    //log += "   New node created with:" + Environment.NewLine +
                     //    "   Name                           = " + newNode.GetColumnDisplayText(0) + Environment.NewLine +
                     //    "   Shank Diameter [mm]            = " + newNode.GetColumnDisplayText(1) + Environment.NewLine +
                     //    "   Head Diameter [mm]             = " + newNode.GetColumnDisplayText(2) + Environment.NewLine +
                     //    "   Maximum Connection Length [mm] = " + newNode.GetColumnDisplayText(3) + Environment.NewLine +
-                    //    "   Material Name                  = " + newNode.GetColumnDisplayText(4) + Environment.NewLine);
+                    //    "   Material Name                  = " + newNode.GetColumnDisplayText(4) + Environment.NewLine + Environment.NewLine;
 
                     i++;
                 }
 
-                lw.WriteFullline("Load stored Bolt Definitions:  SUCCESS");
+                log += "Load stored Bolt Definitions:  SUCCESS" + Environment.NewLine;
             }
             catch (Exception e)
             {
-                lw.WriteFullline("!ERROR occurred: " + Environment.NewLine +
-                    e.ToString());
+                log += "!ERROR occurred: " + Environment.NewLine +
+                    e.ToString() + Environment.NewLine;
             }
         }
 
@@ -928,10 +933,10 @@ namespace UCCreator
         {
             try
             {
-                lw.WriteFullline(Environment.NewLine +
+                log += Environment.NewLine +
                     " ----------------------------------------- " + Environment.NewLine +
                     "| SAVE BOLT DEFINITION LIST FOR LATER USE |" + Environment.NewLine +
-                    " ----------------------------------------- ");
+                    " ----------------------------------------- " + Environment.NewLine;
 
                 // Get target Excel file path
                 //string filePath = System.Reflection.Assembly.GetExecutingAssembly().CodeBase;
@@ -939,11 +944,11 @@ namespace UCCreator
                 //filePath = filePath.Substring(filePath.IndexOf("/")).Substring(3).Replace("/", "\\");
                 string filePath = StoragePath_user;
 
-                //lw.WriteFullline("Target file path :  " + filePath);
+                //log += "Target file path :  " + filePath);
 
                 // Create new Text file
                 if (File.Exists(filePath)) { File.Delete(filePath); }
-                //lw.WriteFullline("Write content...");
+                //log += "Write content...");
 
                 // Check if target Directory exists, if not, try to create it
                 Directory.CreateDirectory(filePath.Remove(filePath.LastIndexOf(@"\")));
@@ -952,7 +957,7 @@ namespace UCCreator
                 {
                     // Write Headers
                     sw.WriteLine("NAME | SHANK DIAMETER [mm] | HEAD DIAMETER [mm] | MAXIMUM CONNECTION LENGTH [mm] | MATERIAL");
-                    //lw.WriteFullline("   Added Headers");
+                    //log += "   Added Headers");
 
                     // Write content
                     int i = 1;
@@ -965,18 +970,18 @@ namespace UCCreator
                             node.GetColumnDisplayText(3) + " | " +
                             node.GetColumnDisplayText(4));
 
-                        //lw.WriteFullline("   Added Node " + i.ToString());
+                        //log += "   Added Node " + i.ToString() + Environment.NewLine;
 
                         i++;
                     }
                 }
 
-                lw.WriteFullline("Saved");
+                log += "Saved" + Environment.NewLine;
             }
             catch (Exception e)
             {
-                lw.WriteFullline("!ERROR occurred: " + Environment.NewLine +
-                    e.ToString());
+                log += "!ERROR occurred: " + Environment.NewLine +
+                    e.ToString() + Environment.NewLine;
             }
         }
 
@@ -987,17 +992,17 @@ namespace UCCreator
         {
             try
             {
-                lw.WriteFullline(Environment.NewLine + Environment.NewLine +
+                log += Environment.NewLine + Environment.NewLine +
                     " ------------------------- " + Environment.NewLine +
                     "| EXECUTE BOLT GENERATION |" + Environment.NewLine +
-                    " ------------------------- ");
+                    " ------------------------- " + Environment.NewLine;
 
                 #region CREATE LIST OF PREDEFINED BOLT CONNECTIONS
                 // ------------------------------------------
                 // CREATE LIST OF PREDEFINED BOLT CONNECTIONS
                 // ------------------------------------------
                 myStopwatch.Restart();
-                lw.WriteFullline("Generate list of predefined Bolt Connections...");
+                log += "Generate list of predefined Bolt Connections..." + Environment.NewLine;
 
                 allBoltDefinitions.Clear();
 
@@ -1012,13 +1017,13 @@ namespace UCCreator
                         MaterialName = node.GetColumnDisplayText(4)
                     }); ;
 
-                    lw.WriteFullline("   Added Bolt Definition:  " + node.GetColumnDisplayText(0).ToUpper());
+                    log += "   Added Bolt Definition:  " + node.GetColumnDisplayText(0).ToUpper() + Environment.NewLine;
                 }
 
                 SetNXstatusMessage("Generated list of predefined bolt connections ...");
 
                 myStopwatch.Stop();
-                lw.WriteFullline("[" + myStopwatch.Elapsed.TotalSeconds.ToString() + " seconds]");
+                log += "[" + myStopwatch.Elapsed.TotalSeconds.ToString() + " seconds]" + Environment.NewLine;
                 ExecutionTimes.Add(myStopwatch.Elapsed.TotalSeconds);
                 #endregion
 
@@ -1028,65 +1033,65 @@ namespace UCCreator
                 // GATHER ALL (A)FEM OBJECTS TO PROCESS
                 // ------------------------------------
                 myStopwatch.Restart();
-                lw.WriteFullline(Environment.NewLine +
+                log += Environment.NewLine +
                     " --------------------------- " + Environment.NewLine +
                     "| Gather all (A)FEM objects |" + Environment.NewLine +
-                    " --------------------------- ");
+                    " --------------------------- " + Environment.NewLine;
 
                 currWork = theSession.Parts.BaseWork;
-                lw.WriteFullline("Current working object :  " + currWork.ToString());
+                log += "Current working object :  " + currWork.ToString() + Environment.NewLine;
 
 
-                lw.WriteFullline(Environment.NewLine +
-                    "Getting all FEM and AFEM objects to process...");
+                log += Environment.NewLine +
+                    "Getting all FEM and AFEM objects to process..." + Environment.NewLine;
                 SetNXstatusMessage("Getting all FEM and AFEM objects to process...");
 
                 switch (theSession.Parts.BaseWork.GetType().ToString())
                 {
                     case "NXOpen.CAE.SimPart":
-                        //lw.WriteFullline("---> Recognized as SIM");
+                        //log += "---> Recognized as SIM" + Environment.NewLine;
                         NXOpen.CAE.SimPart mySIM = (NXOpen.CAE.SimPart)theSession.Parts.BaseWork;
 
                         switch (mySIM.FemPart.GetType().ToString())
                         {
                             case "NXOpen.CAE.AssyFemPart":
-                                //lw.WriteFullline("---> Underlying CAE object = recognized as AFEM");
+                                //log += "---> Underlying CAE object = recognized as AFEM" + Environment.NewLine;
                                 ProcessFromAFEM((NXOpen.CAE.AssyFemPart)mySIM.FemPart);
                                 break;
 
                             case "NXOpen.CAE.FemPart":
-                                //lw.WriteFullline("---> Underlying CAE object = recognized as FEM");
+                                //log += "---> Underlying CAE object = recognized as FEM" + Environment.NewLine;
                                 ProcessFromFEM((NXOpen.CAE.FemPart)mySIM.FemPart);
                                 break;
 
                             default:
-                                //lw.WriteFullline("---> Underlying CAE object = recognized as " + mySIM.FemPart.GetType().ToString() + " -> SKIPPED");
+                                //log += "---> Underlying CAE object = recognized as " + mySIM.FemPart.GetType().ToString() + " -> SKIPPED" + Environment.NewLine;
                                 break;
                         }
 
                         break;
 
                     case "NXOpen.CAE.AssyFemPart":
-                        //lw.WriteFullline("---> Recognized as AFEM");
+                        //log += "---> Recognized as AFEM" + Environment.NewLine;
                         ProcessFromAFEM((NXOpen.CAE.AssyFemPart)theSession.Parts.BaseWork);
                         break;
 
                     case "NXOpen.CAE.FemPart":
-                        //lw.WriteFullline("---> Recognized as FEM");
+                        //log += "---> Recognized as FEM" + Environment.NewLine;
                         ProcessFromFEM((NXOpen.CAE.FemPart)theSession.Parts.BaseWork);
                         break;
 
                     default:
-                        lw.WriteFullline("---> Not recognized as SIM, AFEM or FEM, but as:  " + theSession.Parts.BaseWork.GetType().ToString() + Environment.NewLine +
-                            "=> exiting...");
+                        log += "---> Not recognized as SIM, AFEM or FEM, but as:  " + theSession.Parts.BaseWork.GetType().ToString() + Environment.NewLine +
+                            "=> exiting..." + Environment.NewLine;
                         return;
                         break;
                 }
 
-                lw.WriteFullline("   -> # (A)FEM objects to process = " + allTargObjects.Count.ToString());
+                log += "   -> # (A)FEM objects to process = " + allTargObjects.Count.ToString() + Environment.NewLine;
 
                 myStopwatch.Stop();
-                lw.WriteFullline("[" + myStopwatch.Elapsed.TotalSeconds.ToString() + " seconds]");
+                log += "[" + myStopwatch.Elapsed.TotalSeconds.ToString() + " seconds]" + Environment.NewLine;
                 ExecutionTimes.Add(myStopwatch.Elapsed.TotalSeconds);
                 #endregion
 
@@ -1096,8 +1101,8 @@ namespace UCCreator
                 // PROCESS EACH (A)FEM OBJECT
                 // --------------------------
                 myStopwatch.Restart();
-                lw.WriteFullline(Environment.NewLine +
-                    "Processing (A)FEM objects...");
+                log += Environment.NewLine +
+                    "Processing (A)FEM objects..." + Environment.NewLine;
                 int i = 1;
                 int tot = allTargObjects.Count;
 
@@ -1109,9 +1114,9 @@ namespace UCCreator
                     switch (targObj.GetType().ToString())
                     {
                         case "NXOpen.CAE.AssyFemPart":
-                            lw.WriteFullline(Environment.NewLine +
+                            log += Environment.NewLine +
                                 targObj.Name.ToUpper() + Environment.NewLine +
-                                "---> Recognized as AFEM");
+                                "---> Recognized as AFEM" + Environment.NewLine;
 
                             // CREATE SELECTION RECIPES
                             CreateSelectionRecipes((NXOpen.CAE.AssyFemPart)targObj);
@@ -1122,9 +1127,9 @@ namespace UCCreator
                             break;
 
                         case "NXOpen.CAE.FemPart":
-                            lw.WriteFullline(Environment.NewLine +
+                            log += Environment.NewLine +
                                 targObj.Name.ToUpper() + Environment.NewLine +
-                                "---> Recognized as FEM");
+                                "---> Recognized as FEM" + Environment.NewLine;
 
                             // CREATE SELECTION RECIPES
                             CreateSelectionRecipes((NXOpen.CAE.FemPart)targObj);
@@ -1143,7 +1148,7 @@ namespace UCCreator
                 }
 
                 myStopwatch.Stop();
-                lw.WriteFullline("[" + myStopwatch.Elapsed.TotalSeconds.ToString() + " seconds]");
+                log += "[" + myStopwatch.Elapsed.TotalSeconds.ToString() + " seconds]" + Environment.NewLine;
                 ExecutionTimes.Add(myStopwatch.Elapsed.TotalSeconds);
                 #endregion
 
@@ -1153,10 +1158,10 @@ namespace UCCreator
                 // UPDATE EACH (A)FEM OBJECT
                 // -------------------------
                 myStopwatch.Restart();
-                lw.WriteFullline(Environment.NewLine +
+                log += Environment.NewLine +
                     " ------------------------------------------------ " + Environment.NewLine +
                     "| Update (A)FEM objects that have pending update |" + Environment.NewLine +
-                    " ------------------------------------------------ ");
+                    " ------------------------------------------------ " + Environment.NewLine;
 
                 int j = 1;
                 tot = allTargObjects.Count;
@@ -1183,7 +1188,7 @@ namespace UCCreator
                             myBoltConn.MaxBoltLength.Value++;
                             myBoltConn.MaxBoltLength.Value--;
 
-                            lw.WriteFullline("   Update forced of:  " + myBoltConn.Name.ToUpper());
+                            log += "   Update forced of:  " + myBoltConn.Name.ToUpper() + Environment.NewLine;
                         }
                         catch (Exception)
                         {
@@ -1195,14 +1200,14 @@ namespace UCCreator
                     //if (myAFEM.BaseFEModel.AskUpdatePending())
                     //{
                     myCAEpart.BaseFEModel.UpdateFemodel();
-                    lw.WriteFullline("   UPDATED:  " + myCAEpart.Name.ToUpper());
+                    log += "   UPDATED:  " + myCAEpart.Name.ToUpper() + Environment.NewLine;
                     //}
 
                     j++;
                 }
 
                 myStopwatch.Stop();
-                lw.WriteFullline("[" + myStopwatch.Elapsed.TotalSeconds.ToString() + " seconds]");
+                log += "[" + myStopwatch.Elapsed.TotalSeconds.ToString() + " seconds]" + Environment.NewLine;
                 ExecutionTimes.Add(myStopwatch.Elapsed.TotalSeconds);
                 #endregion
 
@@ -1214,18 +1219,18 @@ namespace UCCreator
                 //lw.Open();
 
                 // Diagnostics
-                lw.WriteFullline(Environment.NewLine +
+                log += Environment.NewLine +
                     "DIAGNOSTICS" + Environment.NewLine +
                     "-----------" + Environment.NewLine +
                     "CREATE LIST OF PREDEFINED BOLT CONNECTIONS =  " + ExecutionTimes[0].ToString() + " seconds" + Environment.NewLine +
                     "GATHER ALL (A)FEM OBJECTS TO PROCESS       =  " + ExecutionTimes[1].ToString() + " seconds" + Environment.NewLine +
                     "PROCESS EACH (A)FEM OBJECT                 =  " + ExecutionTimes[2].ToString() + " seconds" + Environment.NewLine +
-                    "UPDATE EACH (A)FEM OBJECT                  =  " + ExecutionTimes[3].ToString() + " seconds");
+                    "UPDATE EACH (A)FEM OBJECT                  =  " + ExecutionTimes[3].ToString() + " seconds" + Environment.NewLine;
             }
             catch (Exception e)
             {
-                lw.WriteFullline("!ERROR occurred: " + Environment.NewLine +
-                    e.ToString());
+                log += "!ERROR occurred: " + Environment.NewLine +
+                    e.ToString() + Environment.NewLine;
 
                 lw.WriteFullline(log);
                 lw.Open();
@@ -1238,7 +1243,7 @@ namespace UCCreator
         /// <param name="myAFEM">Target AFEM object</param>
         private static void ProcessFromAFEM(NXOpen.CAE.AssyFemPart myAFEM)
         {
-            lw.WriteFullline("(AFEM) : " + myAFEM.Name.ToString());
+            log += "(AFEM) : " + myAFEM.Name.ToString() + Environment.NewLine;
 
             allTargObjects.Add(myAFEM);
 
@@ -1261,7 +1266,7 @@ namespace UCCreator
         /// <param name="myComp">Target Assembly object</param>
         private static void ProcessChildrenAFEM(NXOpen.Assemblies.Component myComp)
         {
-            //lw.WriteFullline(Environment.NewLine +
+            //log += Environment.NewLine +
             //    "Processing children of AFEM : " + myComp.Name.ToString());
 
             try
@@ -1269,7 +1274,7 @@ namespace UCCreator
                 // Loop through all Child components of AFEM object
                 foreach (NXOpen.Assemblies.Component myChild in myComp.GetChildren())
                 {
-                    //lw.WriteFullline("CHILD : " + myChild.Name.ToString());
+                    //log += "CHILD : " + myChild.Name.ToString());
 
                     // Get OwningPart object of Child component
                     NXOpen.BasePart myBasePart = myChild.Prototype.OwningPart;
@@ -1281,19 +1286,19 @@ namespace UCCreator
                         switch (TargType.ToString())
                         {
                             case "NXOpen.CAE.AssyFemPart":
-                                //lw.WriteFullline("Recognized as AFEM");
+                                //log += "Recognized as AFEM" + Environment.NewLine;
 
                                 ProcessFromAFEM((NXOpen.CAE.AssyFemPart)myBasePart);
                                 //ProcessChildrenAFEM(myChild);
                                 break;
 
                             case "NXOpen.CAE.FemPart":
-                                //lw.WriteFullline("Recognized as FEM");
+                                //log += "Recognized as FEM" + Environment.NewLine;
                                 ProcessFromFEM((NXOpen.CAE.FemPart)myBasePart);
                                 break;
 
                             default:
-                                //lw.WriteFullline("Recognized as " + TargType.ToString() + " -> SKIPPED");
+                                //log += "Recognized as " + TargType.ToString() + " -> SKIPPED" + Environment.NewLine;
                                 break;
                         }
                     }
@@ -1301,8 +1306,8 @@ namespace UCCreator
             }
             catch (Exception e)
             {
-                lw.WriteFullline("!ERROR - while processing children of AFEM : " + Environment.NewLine +
-                    e.ToString());
+                log += "!ERROR - while processing children of AFEM : " + Environment.NewLine +
+                    e.ToString() + Environment.NewLine;
             }
         }
 
@@ -1313,7 +1318,7 @@ namespace UCCreator
         /// <param name="myFEM"></param>
         private static void ProcessFromFEM(NXOpen.CAE.FemPart myFEM)
         {
-            lw.WriteFullline("(FEM)  : " + myFEM.Name.ToString()); 
+            log += "(FEM)  : " + myFEM.Name.ToString() + Environment.NewLine; 
 
             allTargObjects.Add(myFEM);
         }
@@ -1327,8 +1332,8 @@ namespace UCCreator
         {
             try
             {
-                lw.WriteFullline(Environment.NewLine +
-                "   CREATE SELECTION RECIPES" + Environment.NewLine);
+                log += Environment.NewLine +
+                "   CREATE SELECTION RECIPES" + Environment.NewLine + Environment.NewLine;
 
                 if (theSession.Parts.BaseWork.Tag != myAFEM.Tag) { theSession.Parts.SetWork((NXOpen.BasePart)myAFEM); }
 
@@ -1342,12 +1347,12 @@ namespace UCCreator
                 {
                     if (selRecipe.Name.ToUpper() == targSelRecipeName.ToUpper())
                     {
-                        lw.WriteFullline("      Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> exists (skipped)");
+                        log += "      Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> exists (skipped)" + Environment.NewLine;
                         goto otherRecipes;
                     }
                 }
 
-                //lw.WriteFullline("   Selection Recipe:  " + targSelRecipeName.ToUpper());
+                //log += "   Selection Recipe:  " + targSelRecipeName.ToUpper());
 
                 // Set target entity types
                 NXOpen.CAE.CaeSetGroupFilterType[] entitytypes = new NXOpen.CAE.CaeSetGroupFilterType[1];
@@ -1372,7 +1377,7 @@ namespace UCCreator
                 SelRec_GetAllMeshes = myAFEM.SelectionRecipes.CreateBoxBoundingVolumeRecipe("Get all meshes", leftPoint, rightPoint, entitytypes);
                 SelRec_GetAllMeshes.BoundingVolume.Containment = NXOpen.CAE.CaeBoundingVolumePrimitiveContainment.Inside;
 
-                lw.WriteFullline("      Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> CREATED");
+                log += "      Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> CREATED" + Environment.NewLine;
 
             otherRecipes:;
                 // Bolt Curve-related Selection Recipes
@@ -1387,7 +1392,7 @@ namespace UCCreator
                     {
                         if (selRecipe.Name.ToUpper() == targSelRecipeName.ToUpper())
                         {
-                            lw.WriteFullline("      Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> skipped (exists)");
+                            log += "      Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> skipped (exists)" + Environment.NewLine;
                             goto nextBoltDef;
                         }
                     }
@@ -1401,18 +1406,18 @@ namespace UCCreator
 
                     myAttributeSelRecipe.SetUserAttributes(true, "Curve_" + boltDefinition.Name, false, 0, new string[0], new NXObject.AttributeInformation[0], new NXObject.AttributeInformation[0]);
 
-                    //lw.WriteFullline("   Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> created");
+                    //log += "   Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> created" + Environment.NewLine;
 
                     // If Selection Recipe contains 0 entities, delete again
                     if (myAttributeSelRecipe.GetEntities().Length == 0)
                     {
                         theSession.UpdateManager.AddObjectsToDeleteList(new TaggedObject[] { myAttributeSelRecipe });
                         theSession.UpdateManager.DoUpdate(new Session.UndoMarkId());
-                        lw.WriteFullline("      Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> skipped (0 entities)");
+                        log += "      Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> skipped (0 entities)" + Environment.NewLine;
                     }
                     else
                     {
-                        lw.WriteFullline("      Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> created (" + myAttributeSelRecipe.GetEntities().Length.ToString() + " entities)");
+                        log += "      Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> created (" + myAttributeSelRecipe.GetEntities().Length.ToString() + " entities)" + Environment.NewLine;
                     }
 
                 nextBoltDef:;
@@ -1420,8 +1425,8 @@ namespace UCCreator
             }
             catch (Exception e)
             {
-                lw.WriteFullline("!ERROR occurred: " + Environment.NewLine +
-                    e.ToString());
+                log += "!ERROR occurred: " + Environment.NewLine +
+                    e.ToString() + Environment.NewLine;
             }
         }
 
@@ -1434,8 +1439,8 @@ namespace UCCreator
         {
             try
             {
-                lw.WriteFullline(Environment.NewLine +
-                "   CREATE UNIVERSAL BOLT CONNECTIONS" + Environment.NewLine);
+                log += Environment.NewLine +
+                "   CREATE UNIVERSAL BOLT CONNECTIONS" + Environment.NewLine + Environment.NewLine;
 
                 // Check whether input is an AFEM or not
                 bool isAFEM = myAFEM != null ? true : false;
@@ -1475,11 +1480,11 @@ namespace UCCreator
                             theSession.UpdateManager.DoUpdate(new Session.UndoMarkId());
                             //continue;
 
-                            lw.WriteFullline("      BOLT DEFINITION:  " + boltDefinition.Name.ToUpper() + "  --> exists (deleted for re-creation)");
+                            log += "      BOLT DEFINITION:  " + boltDefinition.Name.ToUpper() + "  --> exists (deleted for re-creation)" + Environment.NewLine;
                         }
                         else
                         {
-                            lw.WriteFullline("      BOLT DEFINITION:  " + boltDefinition.Name.ToUpper());
+                            log += "      BOLT DEFINITION:  " + boltDefinition.Name.ToUpper() + Environment.NewLine;
                         }
 
 
@@ -1495,19 +1500,19 @@ namespace UCCreator
                         }
                         catch (Exception e)
                         {
-                            lw.WriteFullline("         Related Selection Recipe not found --> skipped");
+                            log += "         Related Selection Recipe not found --> skipped" + Environment.NewLine;
                             continue;
                         }
 
                         if (targSelRecipe.GetEntities().Length == 0)
                         {
-                            lw.WriteFullline("         Related Selection Recipe (" + targSelRecipe.Name + ") :  " + targSelRecipe.GetEntities().Length.ToString() + " entitities " +
-                                "--> skipped");
+                            log += "         Related Selection Recipe (" + targSelRecipe.Name + ") :  " + targSelRecipe.GetEntities().Length.ToString() + " entitities " +
+                                "--> skipped" + Environment.NewLine;
                             continue;
                         }
                         else
                         {
-                            lw.WriteFullline("         Related Selection Recipe (" + targSelRecipe.Name + ") :  " + targSelRecipe.GetEntities().Length.ToString() + " entitities ");
+                            log += "         Related Selection Recipe (" + targSelRecipe.Name + ") :  " + targSelRecipe.GetEntities().Length.ToString() + " entitities " + Environment.NewLine;
                         }
 
                         // Create Universal Bolt Connection definition (NX12)
@@ -1518,24 +1523,24 @@ namespace UCCreator
 
                         // Set Name
                         newBoltConn.SetName(boltDefinition.Name);
-                        lw.WriteFullline("         Name            : " + boltDefinition.Name);
+                        log += "         Name            : " + boltDefinition.Name + Environment.NewLine;
 
                         // Set Targets (Flanges)
                         if (isAFEM) 
                         {
                             newBoltConn.AddFlangeEntities(0, myAFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper() == "GET ALL MESHES").GetEntities());
-                            lw.WriteFullline("         Targets         : " + myAFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper() == "GET ALL MESHES").Name + " (Selection Recipe)");
+                            log += "         Targets         : " + myAFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper() == "GET ALL MESHES").Name + " (Selection Recipe)" + Environment.NewLine;
                         }
                         else 
                         {
                             newBoltConn.AddFlangeEntities(0, myFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper() == "GET ALL MESHES").GetEntities());
-                            lw.WriteFullline("         Targets         : " + myFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper() == "GET ALL MESHES").Name + " (Selection Recipe)");
+                            log += "         Targets         : " + myFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper() == "GET ALL MESHES").Name + " (Selection Recipe)" + Environment.NewLine;
                         }
                         
 
                         // Set Locations
                         newBoltConn.AddLocationSelectionRecipe(0, targSelRecipe);
-                        lw.WriteFullline("         Locations       : " + targSelRecipe.Name + " (Selection Recipe)");
+                        log += "         Locations       : " + targSelRecipe.Name + " (Selection Recipe)" + Environment.NewLine;
 
                         // Set Physicals
                         newBoltConn.DiameterType = NXOpen.CAE.Connections.DiameterType.User;
@@ -1544,9 +1549,9 @@ namespace UCCreator
                         newBoltConn.HeadDiameter.Value = boltDefinition.HeadDiam;
                         newBoltConn.MaxBoltLength.Value = boltDefinition.MaxConnLength;
 
-                        lw.WriteFullline("         Shank Diameter  : " + newBoltConn.Diameter.Value.ToString());
-                        lw.WriteFullline("         Head Diameter   : " + newBoltConn.HeadDiameter.Value.ToString());
-                        lw.WriteFullline("         Max Bolt Length : " + newBoltConn.MaxBoltLength.Value.ToString());
+                        log += "         Shank Diameter  : " + newBoltConn.Diameter.Value.ToString() + Environment.NewLine;
+                        log += "         Head Diameter   : " + newBoltConn.HeadDiameter.Value.ToString() + Environment.NewLine;
+                        log += "         Max Bolt Length : " + newBoltConn.MaxBoltLength.Value.ToString() + Environment.NewLine;
 
                         // Set Material
                         NXOpen.PhysicalMaterial targMaterial = null;
@@ -1587,16 +1592,16 @@ namespace UCCreator
                             }
                             catch (Exception) { }
 
-                            lw.WriteFullline("         ! MATERIAL COULD NOT BE FOUND :  " + boltDefinition.MaterialName);
+                            log += "         ! MATERIAL COULD NOT BE FOUND :  " + boltDefinition.MaterialName + Environment.NewLine;
                             continue;
                         }
 
 
                     matfound:;
                         newBoltConn.Material = targMaterial;
-                        lw.WriteFullline("         Material        : " + targMaterial.Name);
+                        log += "         Material        : " + targMaterial.Name + Environment.NewLine;
 
-                        lw.WriteFullline("         CREATE  =  success");
+                        log += "         CREATE  =  success" + Environment.NewLine;
 
 
                         // Add newly created Bolt Connection to list for realization step at end
@@ -1604,35 +1609,35 @@ namespace UCCreator
                     }
                     catch (Exception er)
                     {
-                        lw.WriteFullline("!ERROR occurred while creating Bolt Connection: " + Environment.NewLine +
-                        er.ToString());
+                        log += "!ERROR occurred while creating Bolt Connection: " + Environment.NewLine +
+                        er.ToString() + Environment.NewLine;
                     }
                 }
 
                 // Realize all new Universal Bolt Connection definitions
                 // -----------------------------------------------------
-                lw.WriteFullline(Environment.NewLine +
-                    "   REALIZE UNIVERSAL BOLT CONNECTIONS");
+                log += Environment.NewLine +
+                    "   REALIZE UNIVERSAL BOLT CONNECTIONS" + Environment.NewLine;
 
                 NXOpen.CAE.Connections.Element boltConnElement = isAFEM
                     ? myAFEM.BaseFEModel.ConnectionElementCollection.Create(NXOpen.CAE.Connections.ElementType.E1DSpider, "Element - BOLT DEFINITIONS", newBoltConnections.ToArray())
                     : myFEM.BaseFEModel.ConnectionElementCollection.Create(NXOpen.CAE.Connections.ElementType.E1DSpider, "Element - BOLT DEFINITIONS", newBoltConnections.ToArray());
 
                 boltConnElement.GenerateElements();
-                lw.WriteFullline("      Elements generated");
+                log += "      Elements generated" + Environment.NewLine;
 
                 //if (myAFEM.BaseFEModel.AskUpdatePending())
                 //{
                 //    myAFEM.BaseFEModel.UpdateFemodel();
-                //    lw.WriteFullline("      FEModel updated");
+                //    log += "      FEModel updated");
                 //}
 
-                lw.WriteFullline("      REALIZATION =  success");
+                log += "      REALIZATION =  success" + Environment.NewLine;
             }
             catch (Exception e)
             {
-                lw.WriteFullline("!ERROR occurred: " + Environment.NewLine +
-                    e.ToString());
+                log += "!ERROR occurred: " + Environment.NewLine +
+                    e.ToString() + Environment.NewLine;
             }
         }
         #endregion
