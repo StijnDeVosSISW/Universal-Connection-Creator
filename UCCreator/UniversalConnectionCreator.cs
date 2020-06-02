@@ -1002,6 +1002,11 @@ namespace UCCreator
                 // CREATE LIST OF PREDEFINED BOLT CONNECTIONS
                 // ------------------------------------------
                 myStopwatch.Restart();
+                log += Environment.NewLine + Environment.NewLine +
+                    " -------------------------------------------- " + Environment.NewLine +
+                    "| Create list of Predefined Bolt Connections |" + Environment.NewLine +
+                    " -------------------------------------------- " + Environment.NewLine;
+
                 log += "Generate list of predefined Bolt Connections..." + Environment.NewLine;
 
                 allBoltDefinitions.Clear();
@@ -1023,7 +1028,8 @@ namespace UCCreator
                 SetNXstatusMessage("Generated list of predefined bolt connections ...");
 
                 myStopwatch.Stop();
-                log += "[" + myStopwatch.Elapsed.TotalSeconds.ToString() + " seconds]" + Environment.NewLine;
+                log += Environment.NewLine + 
+                    "[" + myStopwatch.Elapsed.TotalSeconds.ToString() + " seconds]" + Environment.NewLine;
                 ExecutionTimes.Add(myStopwatch.Elapsed.TotalSeconds);
                 #endregion
 
@@ -1091,7 +1097,8 @@ namespace UCCreator
                 log += "   -> # (A)FEM objects to process = " + allTargObjects.Count.ToString() + Environment.NewLine;
 
                 myStopwatch.Stop();
-                log += "[" + myStopwatch.Elapsed.TotalSeconds.ToString() + " seconds]" + Environment.NewLine;
+                log += Environment.NewLine + 
+                    "[" + myStopwatch.Elapsed.TotalSeconds.ToString() + " seconds]" + Environment.NewLine;
                 ExecutionTimes.Add(myStopwatch.Elapsed.TotalSeconds);
                 #endregion
 
@@ -1102,7 +1109,9 @@ namespace UCCreator
                 // --------------------------
                 myStopwatch.Restart();
                 log += Environment.NewLine +
-                    "Processing (A)FEM objects..." + Environment.NewLine;
+                    " ---------------------------- " + Environment.NewLine +
+                    "| Process each (A)FEM object |" + Environment.NewLine +
+                    " ---------------------------- " + Environment.NewLine;
                 int i = 1;
                 int tot = allTargObjects.Count;
 
@@ -1115,7 +1124,9 @@ namespace UCCreator
                     {
                         case "NXOpen.CAE.AssyFemPart":
                             log += Environment.NewLine +
+                                "=================================================================================" + Environment.NewLine +
                                 targObj.Name.ToUpper() + Environment.NewLine +
+                                "=================================================================================" + Environment.NewLine +
                                 "---> Recognized as AFEM" + Environment.NewLine;
 
                             // CREATE SELECTION RECIPES
@@ -1128,7 +1139,9 @@ namespace UCCreator
 
                         case "NXOpen.CAE.FemPart":
                             log += Environment.NewLine +
+                                "=================================================================================" + Environment.NewLine +
                                 targObj.Name.ToUpper() + Environment.NewLine +
+                                "=================================================================================" + Environment.NewLine +
                                 "---> Recognized as FEM" + Environment.NewLine;
 
                             // Check if FEM should be processed or not
@@ -1162,7 +1175,8 @@ namespace UCCreator
                 }
 
                 myStopwatch.Stop();
-                log += "[" + myStopwatch.Elapsed.TotalSeconds.ToString() + " seconds]" + Environment.NewLine;
+                log += Environment.NewLine + 
+                    "[" + myStopwatch.Elapsed.TotalSeconds.ToString() + " seconds]" + Environment.NewLine;
                 ExecutionTimes.Add(myStopwatch.Elapsed.TotalSeconds);
                 #endregion
 
