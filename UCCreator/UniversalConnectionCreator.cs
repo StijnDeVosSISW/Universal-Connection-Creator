@@ -1114,6 +1114,7 @@ namespace UCCreator
                     " ---------------------------- " + Environment.NewLine;
                 int i = 1;
                 int tot = allTargObjects.Count;
+                bool SelRecipesHaveCurves = false;
 
                 foreach (NXObject targObj in allTargObjects)
                 {
@@ -1130,10 +1131,16 @@ namespace UCCreator
                                 "---> Recognized as AFEM" + Environment.NewLine;
 
                             // CREATE SELECTION RECIPES
-                            CreateSelectionRecipes((NXOpen.CAE.AssyFemPart)targObj);
+                            SelRecipesHaveCurves = CreateSelectionRecipes((NXOpen.CAE.AssyFemPart)targObj);
 
-                            // CREATE UNIVERSAL BOLT CONNECTION DEFINITIONS
-                            CreateUniversalBoltConnections((NXOpen.CAE.AssyFemPart)targObj, null);
+                            if (SelRecipesHaveCurves)
+                            {
+                                // CREATE UNIVERSAL BOLT CONNECTION DEFINITIONS
+                                CreateUniversalBoltConnections((NXOpen.CAE.AssyFemPart)targObj, null);
+
+                                // UPDATE BOLT CONNECTIONS
+                                UpdateCAEObjectConnections((NXOpen.CAE.BaseFemPart)targObj);
+                            }
 
                             break;
 
@@ -1155,14 +1162,21 @@ namespace UCCreator
                                 log += Environment.NewLine +
                                     "===> FEM does not contain any mesh objects:  assumed to be a bolt representation  (-> SKIPPED)" + Environment.NewLine;
 
+                                i++;
                                 continue;
                             }
 
                             // CREATE SELECTION RECIPES
-                            CreateSelectionRecipes((NXOpen.CAE.FemPart)targObj);
+                            SelRecipesHaveCurves = CreateSelectionRecipes((NXOpen.CAE.FemPart)targObj);
+                             
+                            if (SelRecipesHaveCurves)
+                            {
+                                // CREATE UNIVERSAL BOLT CONNECTION DEFINITIONS
+                                CreateUniversalBoltConnections(null, (NXOpen.CAE.FemPart)targObj);
 
-                            // CREATE UNIVERSAL BOLT CONNECTION DEFINITIONS
-                            CreateUniversalBoltConnections(null, (NXOpen.CAE.FemPart)targObj);
+                                // UPDATE BOLT CONNECTIONS
+                                UpdateCAEObjectConnections((NXOpen.CAE.BaseFemPart)targObj);
+                            }
 
                             break;
 
@@ -1182,61 +1196,61 @@ namespace UCCreator
 
 
                 #region UPDATE EACH (A)FEM OBJECT
-                // -------------------------
-                // UPDATE EACH (A)FEM OBJECT
-                // -------------------------
-                myStopwatch.Restart();
-                log += Environment.NewLine +
-                    " ------------------------------------------------ " + Environment.NewLine +
-                    "| Update (A)FEM objects that have pending update |" + Environment.NewLine +
-                    " ------------------------------------------------ " + Environment.NewLine;
+                //// -------------------------
+                //// UPDATE EACH (A)FEM OBJECT
+                //// -------------------------
+                //myStopwatch.Restart();
+                //log += Environment.NewLine +
+                //    " ------------------------------------------------ " + Environment.NewLine +
+                //    "| Update (A)FEM objects that have pending update |" + Environment.NewLine +
+                //    " ------------------------------------------------ " + Environment.NewLine;
 
-                int j = 1;
-                tot = allTargObjects.Count;
+                //int j = 1;
+                //tot = allTargObjects.Count;
 
-                foreach (NXObject targObj in allTargObjects)
-                {
-                    SetNXstatusMessage("Updating (A)FEM objects :   " + j.ToString() + @"/" + tot.ToString() + "  (" + Math.Round(((double)j / tot) * 100) + "%)    " +
-                        "[" + targObj.Name + "]");
+                //foreach (NXObject targObj in allTargObjects)
+                //{
+                //    SetNXstatusMessage("Updating (A)FEM objects :   " + j.ToString() + @"/" + tot.ToString() + "  (" + Math.Round(((double)j / tot) * 100) + "%)    " +
+                //        "[" + targObj.Name + "]");
 
 
-                    // Set target (A)FEM to working
-                    NXOpen.CAE.BaseFemPart myCAEpart = (NXOpen.CAE.BaseFemPart)targObj;
-                    if (theSession.Parts.BaseWork.Tag != myCAEpart.Tag) { theSession.Parts.SetWork(myCAEpart); }
+                //    // Set target (A)FEM to working
+                //    NXOpen.CAE.BaseFemPart myCAEpart = (NXOpen.CAE.BaseFemPart)targObj;
+                //    if (theSession.Parts.BaseWork.Tag != myCAEpart.Tag) { theSession.Parts.SetWork(myCAEpart); }
 
-                    // Force "update" status for each Universal Bolt Connection
-                    foreach (NXOpen.CAE.Connections.IConnection myConn in myCAEpart.BaseFEModel.ConnectionsContainer.GetAllConnections())
-                    {
-                        try
-                        {
-                            // Check if it is a Universal Bolt Connection
-                            NXOpen.CAE.Connections.Bolt myBoltConn = (NXOpen.CAE.Connections.Bolt)myConn;
+                //    // Force "update" status for each Universal Bolt Connection
+                //    foreach (NXOpen.CAE.Connections.IConnection myConn in myCAEpart.BaseFEModel.ConnectionsContainer.GetAllConnections())
+                //    {
+                //        try
+                //        {
+                //            // Check if it is a Universal Bolt Connection
+                //            NXOpen.CAE.Connections.Bolt myBoltConn = (NXOpen.CAE.Connections.Bolt)myConn;
 
-                            // Force an "update" of the Universal Bolt Connection
-                            myBoltConn.MaxBoltLength.Value++;
-                            myBoltConn.MaxBoltLength.Value--;
+                //            // Force an "update" of the Universal Bolt Connection
+                //            myBoltConn.MaxBoltLength.Value++;
+                //            myBoltConn.MaxBoltLength.Value--;
 
-                            log += "   Update forced of:  " + myBoltConn.Name.ToUpper() + Environment.NewLine;
-                        }
-                        catch (Exception)
-                        {
-                            // Not a Universal Bolt Connection
-                        }
-                    }
+                //            log += "   Update forced of:  " + myBoltConn.Name.ToUpper() + Environment.NewLine;
+                //        }
+                //        catch (Exception)
+                //        {
+                //            // Not a Universal Bolt Connection
+                //        }
+                //    }
 
-                    // Update AFEM to realize all Universal Bolt Connections
-                    //if (myAFEM.BaseFEModel.AskUpdatePending())
-                    //{
-                    myCAEpart.BaseFEModel.UpdateFemodel();
-                    log += "   UPDATED:  " + myCAEpart.Name.ToUpper() + Environment.NewLine;
-                    //}
+                //    // Update AFEM to realize all Universal Bolt Connections
+                //    //if (myAFEM.BaseFEModel.AskUpdatePending())
+                //    //{
+                //    myCAEpart.BaseFEModel.UpdateFemodel();
+                //    log += "   UPDATED:  " + myCAEpart.Name.ToUpper() + Environment.NewLine;
+                //    //}
 
-                    j++;
-                }
+                //    j++;
+                //}
 
-                myStopwatch.Stop();
-                log += "[" + myStopwatch.Elapsed.TotalSeconds.ToString() + " seconds]" + Environment.NewLine;
-                ExecutionTimes.Add(myStopwatch.Elapsed.TotalSeconds);
+                //myStopwatch.Stop();
+                //log += "[" + myStopwatch.Elapsed.TotalSeconds.ToString() + " seconds]" + Environment.NewLine;
+                //ExecutionTimes.Add(myStopwatch.Elapsed.TotalSeconds);
                 #endregion
 
 
@@ -1252,8 +1266,8 @@ namespace UCCreator
                     "-----------" + Environment.NewLine +
                     "CREATE LIST OF PREDEFINED BOLT CONNECTIONS =  " + ExecutionTimes[0].ToString() + " seconds" + Environment.NewLine +
                     "GATHER ALL (A)FEM OBJECTS TO PROCESS       =  " + ExecutionTimes[1].ToString() + " seconds" + Environment.NewLine +
-                    "PROCESS EACH (A)FEM OBJECT                 =  " + ExecutionTimes[2].ToString() + " seconds" + Environment.NewLine +
-                    "UPDATE EACH (A)FEM OBJECT                  =  " + ExecutionTimes[3].ToString() + " seconds" + Environment.NewLine;
+                    "PROCESS EACH (A)FEM OBJECT                 =  " + ExecutionTimes[2].ToString() + " seconds" + Environment.NewLine;
+                    //"UPDATE EACH (A)FEM OBJECT                  =  " + ExecutionTimes[3].ToString() + " seconds" + Environment.NewLine;
             }
             catch (Exception e)
             {
@@ -1356,8 +1370,10 @@ namespace UCCreator
         /// Create predefined Selection Recipes
         /// </summary>
         /// <param name="myAFEM">Target AFEM object</param>
-        private static void CreateSelectionRecipes(NXOpen.CAE.CaePart myAFEM)
+        private static bool CreateSelectionRecipes(NXOpen.CAE.CaePart myAFEM)
         {
+            bool CreatedCurveSelRecipe = false;
+
             try
             {
                 log += Environment.NewLine +
@@ -1422,6 +1438,7 @@ namespace UCCreator
                         if (selRecipe.Name.ToUpper() == targSelRecipeName.ToUpper())
                         {
                             log += "      Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> skipped (exists)" + Environment.NewLine;
+                            CreatedCurveSelRecipe = true;
                             goto nextBoltDef;
                         }
                     }
@@ -1447,6 +1464,7 @@ namespace UCCreator
                     else
                     {
                         log += "      Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> created (" + myAttributeSelRecipe.GetEntities().Length.ToString() + " entities)" + Environment.NewLine;
+                        CreatedCurveSelRecipe = true;
                     }
 
                 nextBoltDef:;
@@ -1457,6 +1475,8 @@ namespace UCCreator
                 log += "!ERROR occurred: " + Environment.NewLine +
                     e.ToString() + Environment.NewLine;
             }
+
+            return CreatedCurveSelRecipe;
         }
 
 
@@ -1669,6 +1689,53 @@ namespace UCCreator
                     e.ToString() + Environment.NewLine;
             }
         }
+        
+
+        /// <summary>
+        /// Update (A)FEM object's Bolt Connections to make sure new Universal Bolt Connections are properly finalized
+        /// </summary>
+        /// <param name="myCAEpart"></param>
+        private static void UpdateCAEObjectConnections(NXOpen.CAE.BaseFemPart myCAEpart)
+        {
+            log += Environment.NewLine +
+                "   UPDATE NEW BOLT CONNECTIONS" + Environment.NewLine + Environment.NewLine;
+
+            // Set target (A)FEM to working
+            //NXOpen.CAE.BaseFemPart myCAEpart = (NXOpen.CAE.BaseFemPart)targObj;
+            if (theSession.Parts.BaseWork.Tag != myCAEpart.Tag) { theSession.Parts.SetWork(myCAEpart); log += "MADE WORKING" + Environment.NewLine; }
+
+            // Force "update" status for each Universal Bolt Connection
+            foreach (NXOpen.CAE.Connections.IConnection myConn in myCAEpart.BaseFEModel.ConnectionsContainer.GetAllConnections()
+                .Where(x => x.GetType().ToString() == "NXOpen.CAE.Connections.Bolt"))
+            {
+                try
+                {
+                    // Check if it is a Universal Bolt Connection
+                    NXOpen.CAE.Connections.Bolt myBoltConn = (NXOpen.CAE.Connections.Bolt)myConn;
+
+                    log += "---> TYPE = " + myBoltConn.GetType().ToString();
+
+                    // Force an "update" of the Universal Bolt Connection
+                    myBoltConn.MaxBoltLength.Value++;
+                    myBoltConn.MaxBoltLength.Value--;
+
+                    log += "      Update forced of Bolt Connection:  " + myBoltConn.Name.ToUpper() + Environment.NewLine;
+                }
+                catch (Exception)
+                {
+                    // Not a Universal Bolt Connection
+                }
+            }
+
+            // Update AFEM to realize all Universal Bolt Connections
+            //if (myAFEM.BaseFEModel.AskUpdatePending())
+            //{
+            myCAEpart.BaseFEModel.UpdateFemodel();
+            //log += "      UPDATED:  " + myCAEpart.Name.ToUpper() + Environment.NewLine;
+            log += "      UPDATED:  " + myCAEpart.Name.ToUpper() + Environment.NewLine;
+            //}
+        }
+
         #endregion
     }
 }
