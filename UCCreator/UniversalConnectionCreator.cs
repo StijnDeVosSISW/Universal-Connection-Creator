@@ -1131,6 +1131,20 @@ namespace UCCreator
                                 targObj.Name.ToUpper() + Environment.NewLine +
                                 "---> Recognized as FEM" + Environment.NewLine;
 
+                            // Check if FEM should be processed or not
+                            // ---------------------------------------
+                            // FEM should NOT be processed if:
+                            // - it does not contain any mesh objects
+                            //   => assumed that it represents a Bolt part family member, with just the CAD curve data
+                            NXOpen.CAE.FemPart myFEM = (NXOpen.CAE.FemPart)targObj;
+                            if (myFEM.BaseFEModel.MeshManager.GetMeshes().Length < 1)
+                            {
+                                log += Environment.NewLine +
+                                    "===> FEM does not contain any mesh objects:  assumed to be a bolt representation  (-> SKIPPED)" + Environment.NewLine;
+
+                                continue;
+                            }
+
                             // CREATE SELECTION RECIPES
                             CreateSelectionRecipes((NXOpen.CAE.FemPart)targObj);
 
@@ -1174,7 +1188,7 @@ namespace UCCreator
 
                     // Set target (A)FEM to working
                     NXOpen.CAE.BaseFemPart myCAEpart = (NXOpen.CAE.BaseFemPart)targObj;
-                    theSession.Parts.SetWork(myCAEpart);
+                    if (theSession.Parts.BaseWork.Tag != myCAEpart.Tag) { theSession.Parts.SetWork(myCAEpart); }
 
                     // Force "update" status for each Universal Bolt Connection
                     foreach (NXOpen.CAE.Connections.IConnection myConn in myCAEpart.BaseFEModel.ConnectionsContainer.GetAllConnections())
@@ -1337,6 +1351,7 @@ namespace UCCreator
 
                 if (theSession.Parts.BaseWork.Tag != myAFEM.Tag) { theSession.Parts.SetWork((NXOpen.BasePart)myAFEM); }
 
+
                 // Create "Get all meshes" Selection Recipe
                 // ----------------------------------------
                 // Get target name
@@ -1449,9 +1464,9 @@ namespace UCCreator
 
                 // Set target AFEM to working
                 // --------------------------
-                if (isAFEM) { if (workObjTag != myAFEM.Tag ) { theSession.Parts.SetWork((NXOpen.BasePart)myAFEM); } }
-                else { if (workObjTag != myFEM.Tag) { theSession.Parts.SetWork((NXOpen.BasePart)myFEM); } } 
-                
+                if (isAFEM) { if (workObjTag != myAFEM.Tag) { theSession.Parts.SetWork((NXOpen.BasePart)myAFEM); } }
+                else { if (workObjTag != myFEM.Tag) { theSession.Parts.SetWork((NXOpen.BasePart)myFEM); } }
+
 
                 // Initializations
                 // ---------------
