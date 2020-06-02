@@ -421,10 +421,10 @@ namespace UCCreator
                         default:
                             break;
                     }
-                    if (nativeFileBrowser0.Path != "" && File.Exists(nativeFileBrowser0.Path))
-                    {
-                        ImportDefsFromExcel(nativeFileBrowser0.Path);
-                    }
+                    //if (nativeFileBrowser0.Path != "" && File.Exists(nativeFileBrowser0.Path))
+                    //{
+                    //    ImportDefsFromExcel(nativeFileBrowser0.Path);
+                    //}
                 }
                 else if (block == nativeFileBrowser0)
                 {
@@ -1330,7 +1330,7 @@ namespace UCCreator
                 lw.WriteFullline(Environment.NewLine +
                 "   CREATE SELECTION RECIPES" + Environment.NewLine);
 
-                theSession.Parts.SetWork((NXOpen.BasePart)myAFEM);
+                if (theSession.Parts.BaseWork.Tag != myAFEM.Tag) { theSession.Parts.SetWork((NXOpen.BasePart)myAFEM); }
 
                 // Create "Get all meshes" Selection Recipe
                 // ----------------------------------------
@@ -1440,10 +1440,12 @@ namespace UCCreator
                 // Check whether input is an AFEM or not
                 bool isAFEM = myAFEM != null ? true : false;
 
+                NXOpen.Tag workObjTag = theSession.Parts.BaseWork.Tag;
+
                 // Set target AFEM to working
                 // --------------------------
-                if (isAFEM) { theSession.Parts.SetWork((NXOpen.BasePart)myAFEM); }
-                else { theSession.Parts.SetWork((NXOpen.BasePart)myFEM); }
+                if (isAFEM) { if (workObjTag != myAFEM.Tag ) { theSession.Parts.SetWork((NXOpen.BasePart)myAFEM); } }
+                else { if (workObjTag != myFEM.Tag) { theSession.Parts.SetWork((NXOpen.BasePart)myFEM); } } 
                 
 
                 // Initializations
