@@ -30,7 +30,7 @@ namespace UCCreator
         private NXOpen.BlockStyler.Enumeration enum_SavedLists;// Block type: Enumeration
         private NXOpen.BlockStyler.Button button_IMPORT_SavedLists;// Block type: Button
         private NXOpen.BlockStyler.Group group;// Block type: Group
-        private NXOpen.BlockStyler.FileSelection nativeFileBrowser0;// Block type: NativeFileBrowser
+        private NXOpen.BlockStyler.FileSelection nativeFileBrowser0;// Block type: NativeFileBrowser'
         private NXOpen.BlockStyler.Button button_IMPORT;// Block type: Button
         private NXOpen.BlockStyler.Enumeration enum0;// Block type: Enumeration
         private NXOpen.BlockStyler.Button button_CREATE;// Block type: Button
@@ -244,13 +244,13 @@ namespace UCCreator
                 button_IMPORT = (NXOpen.BlockStyler.Button)theDialog.TopBlock.FindBlock("button_IMPORT");
                 enum0 = (NXOpen.BlockStyler.Enumeration)theDialog.TopBlock.FindBlock("enum0");
                 button_CREATE = (NXOpen.BlockStyler.Button)theDialog.TopBlock.FindBlock("button_CREATE");
-
+                
                 // Initialize storage paths
                 StoragePath_server = System.Reflection.Assembly.GetExecutingAssembly().CodeBase;
                 StoragePath_server = StoragePath_server.Remove(StoragePath_server.LastIndexOf("/")) + "\\" + StorageFileName + ".txt";
                 StoragePath_server = StoragePath_server.Substring(StoragePath_server.IndexOf("/")).Substring(3).Replace("/", "\\");
 
-                StoragePath_user = Environment.GetEnvironmentVariable("USERPROFILE") + "\\AppData\\Local\\UniversalConnectionCreator\\" + StorageFileName + ".txt"; 
+                StoragePath_user = Environment.GetEnvironmentVariable("USERPROFILE") + "\\AppData\\Local\\UniversalConnectionCreator\\" + StorageFileName + ".txt";
 
                 //------------------------------------------------------------------------------
                 //Registration of Treelist specific callbacks
@@ -1116,11 +1116,26 @@ namespace UCCreator
                 int tot = allTargObjects.Count;
                 bool SelRecipesHaveCurves = false;
 
+                System.Diagnostics.Stopwatch detailStopwatch = new System.Diagnostics.Stopwatch();
+
                 foreach (NXObject targObj in allTargObjects)
                 {
+                    // Initializations
+                    List<double> DetailExecutionTimes = new List<double>() { 0, 0, 0, 0 };
+
                     SetNXstatusMessage("Processing (A)FEM objects :   " + i.ToString() + @"/" + tot.ToString() + "  (" + Math.Round(((double)i / tot) * 100) + "%)    " +
                         "[" + targObj.Name + "]");
 
+                    // SET TO WORKING PART
+                    // -------------------
+                    detailStopwatch.Restart();
+                    if (theSession.Parts.BaseWork.Tag != targObj.Tag) { theSession.Parts.SetWork((NXOpen.BasePart)targObj); }
+
+                    detailStopwatch.Stop();
+                    DetailExecutionTimes[0] = detailStopwatch.Elapsed.TotalSeconds;
+
+
+                    // Switch between FEM or AFEM target
                     switch (targObj.GetType().ToString())
                     {
                         case "NXOpen.CAE.AssyFemPart":
@@ -1131,15 +1146,33 @@ namespace UCCreator
                                 "---> Recognized as AFEM" + Environment.NewLine;
 
                             // CREATE SELECTION RECIPES
+                            // ------------------------
+                            detailStopwatch.Restart();
+
                             SelRecipesHaveCurves = CreateSelectionRecipes((NXOpen.CAE.AssyFemPart)targObj);
+
+                            detailStopwatch.Stop();
+                            DetailExecutionTimes[1] = detailStopwatch.Elapsed.TotalSeconds;
 
                             if (SelRecipesHaveCurves)
                             {
                                 // CREATE UNIVERSAL BOLT CONNECTION DEFINITIONS
+                                // --------------------------------------------
+                                detailStopwatch.Restart();
+
                                 CreateUniversalBoltConnections((NXOpen.CAE.AssyFemPart)targObj, null);
 
+                                detailStopwatch.Stop();
+                                DetailExecutionTimes[2] = detailStopwatch.Elapsed.TotalSeconds;
+
                                 // UPDATE BOLT CONNECTIONS
+                                // -----------------------
+                                detailStopwatch.Restart();
+
                                 UpdateCAEObjectConnections((NXOpen.CAE.BaseFemPart)targObj);
+
+                                detailStopwatch.Stop();
+                                DetailExecutionTimes[3] = detailStopwatch.Elapsed.TotalSeconds;
                             }
 
                             break;
@@ -1161,21 +1194,37 @@ namespace UCCreator
                             {
                                 log += Environment.NewLine +
                                     "===> FEM does not contain any mesh objects:  assumed to be a bolt representation  (-> SKIPPED)" + Environment.NewLine;
-
-                                i++;
-                                continue;
+                                break;
                             }
 
                             // CREATE SELECTION RECIPES
+                            // ------------------------
+                            detailStopwatch.Restart();
+
                             SelRecipesHaveCurves = CreateSelectionRecipes((NXOpen.CAE.FemPart)targObj);
-                             
+
+                            detailStopwatch.Stop();
+                            DetailExecutionTimes[1] = detailStopwatch.Elapsed.TotalSeconds;
+
                             if (SelRecipesHaveCurves)
                             {
                                 // CREATE UNIVERSAL BOLT CONNECTION DEFINITIONS
+                                // --------------------------------------------
+                                detailStopwatch.Restart();
+
                                 CreateUniversalBoltConnections(null, (NXOpen.CAE.FemPart)targObj);
 
+                                detailStopwatch.Stop();
+                                DetailExecutionTimes[2] = detailStopwatch.Elapsed.TotalSeconds;
+
                                 // UPDATE BOLT CONNECTIONS
+                                // -----------------------
+                                detailStopwatch.Restart();
+
                                 UpdateCAEObjectConnections((NXOpen.CAE.BaseFemPart)targObj);
+
+                                detailStopwatch.Stop();
+                                DetailExecutionTimes[3] = detailStopwatch.Elapsed.TotalSeconds;
                             }
 
                             break;
@@ -1184,6 +1233,15 @@ namespace UCCreator
                             break;
                     }
 
+                    // Diagnostics
+                    log += Environment.NewLine +
+                        "DIAGNOSTICS" + Environment.NewLine +
+                        "-----------" + Environment.NewLine +
+                        "SET TO WORKING OBJECT             =  " + DetailExecutionTimes[0].ToString() + " seconds" + Environment.NewLine +
+                        "CREATE SELECTION RECIPES          =  " + DetailExecutionTimes[1].ToString() + " seconds" + Environment.NewLine +
+                        "CREATE UNIVERSAL BOLT CONNECTIONS =  " + DetailExecutionTimes[2].ToString() + " seconds" + Environment.NewLine +
+                        "UPDATE BOLT CONNECTIONS           =  " + DetailExecutionTimes[3].ToString() + " seconds" + Environment.NewLine;
+                        
                     i++;
 
                 }
@@ -1370,7 +1428,7 @@ namespace UCCreator
         /// Create predefined Selection Recipes
         /// </summary>
         /// <param name="myAFEM">Target AFEM object</param>
-        private static bool CreateSelectionRecipes(NXOpen.CAE.CaePart myAFEM)
+        private static bool CreateSelectionRecipes(NXOpen.CAE.CaePart myCAEPart)
         {
             bool CreatedCurveSelRecipe = false;
 
@@ -1379,7 +1437,7 @@ namespace UCCreator
                 log += Environment.NewLine +
                 "   CREATE SELECTION RECIPES" + Environment.NewLine + Environment.NewLine;
 
-                if (theSession.Parts.BaseWork.Tag != myAFEM.Tag) { theSession.Parts.SetWork((NXOpen.BasePart)myAFEM); }
+                if (theSession.Parts.BaseWork.Tag != myCAEPart.Tag) { theSession.Parts.SetWork((NXOpen.BasePart)myCAEPart); }
 
 
                 // Create "Get all meshes" Selection Recipe
@@ -1387,14 +1445,11 @@ namespace UCCreator
                 // Get target name
                 string targSelRecipeName = "Get all meshes";
 
-                // Check if not existing yet
-                foreach (NXOpen.CAE.SelectionRecipe selRecipe in myAFEM.SelectionRecipes)
+                //Check if not existing yet
+                if (myCAEPart.SelectionRecipes.ToArray().Select(x => x.Name.ToUpper()).Contains(targSelRecipeName.ToUpper()))
                 {
-                    if (selRecipe.Name.ToUpper() == targSelRecipeName.ToUpper())
-                    {
-                        log += "      Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> exists (skipped)" + Environment.NewLine;
-                        goto otherRecipes;
-                    }
+                    log += "      Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> exists (skipped)" + Environment.NewLine;
+                    goto otherRecipes;
                 }
 
                 //log += "   Selection Recipe:  " + targSelRecipeName.ToUpper());
@@ -1405,8 +1460,8 @@ namespace UCCreator
 
                 // Set points for Bounding Box
                 double box_offset = 999999;
-                NXOpen.Point leftPoint = myAFEM.Points.CreatePoint(new Point3d(-box_offset, -box_offset, -box_offset));
-                NXOpen.Point rightPoint = myAFEM.Points.CreatePoint(new Point3d(box_offset, box_offset, box_offset));
+                NXOpen.Point leftPoint = myCAEPart.Points.CreatePoint(new Point3d(-box_offset, -box_offset, -box_offset));
+                NXOpen.Point rightPoint = myCAEPart.Points.CreatePoint(new Point3d(box_offset, box_offset, box_offset));
 
                 //// Create Selection Recipe (NX1899)
                 //NXOpen.CAE.SelRecipeBuilder selRecipeBuilder = myAFEM.SelectionRecipes.CreateSelRecipeBuilder();
@@ -1419,7 +1474,7 @@ namespace UCCreator
 
                 // Create Seletion Recipe (NX12)
                 NXOpen.CAE.BoundingVolumeSelectionRecipe SelRec_GetAllMeshes;
-                SelRec_GetAllMeshes = myAFEM.SelectionRecipes.CreateBoxBoundingVolumeRecipe("Get all meshes", leftPoint, rightPoint, entitytypes);
+                SelRec_GetAllMeshes = myCAEPart.SelectionRecipes.CreateBoxBoundingVolumeRecipe("Get all meshes", leftPoint, rightPoint, entitytypes);
                 SelRec_GetAllMeshes.BoundingVolume.Containment = NXOpen.CAE.CaeBoundingVolumePrimitiveContainment.Inside;
 
                 log += "      Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> CREATED" + Environment.NewLine;
@@ -1433,7 +1488,7 @@ namespace UCCreator
                     targSelRecipeName = boltDefinition.Name + " Curves";
 
                     // Check if not existing yet
-                    foreach (NXOpen.CAE.SelectionRecipe selRecipe in myAFEM.SelectionRecipes)
+                    foreach (NXOpen.CAE.SelectionRecipe selRecipe in myCAEPart.SelectionRecipes)
                     {
                         if (selRecipe.Name.ToUpper() == targSelRecipeName.ToUpper())
                         {
@@ -1444,7 +1499,7 @@ namespace UCCreator
                     }
 
                     // Create Seletion Recipe (NX12)
-                    NXOpen.CAE.AttributeSelectionRecipe myAttributeSelRecipe = myAFEM.SelectionRecipes.CreateAttributeRecipe(
+                    NXOpen.CAE.AttributeSelectionRecipe myAttributeSelRecipe = myCAEPart.SelectionRecipes.CreateAttributeRecipe(
                         targSelRecipeName,
                         NXOpen.CAE.CaeSetGroupFilterType.GeomCurve,
                         false,
