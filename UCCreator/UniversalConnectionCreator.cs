@@ -1137,7 +1137,7 @@ namespace UCCreator
                     // Initializations
                     List<double> DetailExecutionTimes = new List<double>() { 0, 0, 0, 0 };
 
-                    SetNXstatusMessage("Processing (A)FEM objects :   " + i.ToString() + @"/" + tot.ToString() + "  (" + Math.Round(((double)i / tot) * 100) + "%)    " +
+                    SetNXstatusMessage("Processing unique (A)FEM objects :   " + i.ToString() + @"/" + tot.ToString() + "  (" + Math.Round(((double)i / tot) * 100) + "%)    " +
                         "[" + targObj.Name + "]");
 
                     // SET TO WORKING PART
@@ -1530,6 +1530,30 @@ namespace UCCreator
                 // Check if CAEPart object contains any Curve object with "Curve_" in its name
                 // ---------------------------------------------------------------------------
 
+                //((NXOpen.CAE.FemPart)myCAEPart).Curves
+                //NXOpen.Tag theTag = Tag.Null;
+                //theUfSession.Obj.CycleAll(myCAEPart.Tag, theTag);
+                //do 
+                //{
+                //    log += "Checking new object" + Environment.NewLine;
+
+                    
+
+                //    if (theTag != Tag.Null)
+                //    {
+                //        NXOpen.TaggedObject myObj = NXOpen.Utilities.NXObjectManager.Get(theTag);
+                //        if (myObj.GetType().ToString() == "NXOpen.Curve")
+                //        {
+                //            log += "CURVE : " + ((NXOpen.Curve)myObj).Name + Environment.NewLine;
+                //        }
+                //        if (myObj.GetType().ToString() == "NXOpen.Line")
+                //        {
+                //            log += "LINE : " + ((NXOpen.Line)myObj).Name + Environment.NewLine;
+                //        }
+                //    }
+                //} while (theTag != Tag.Null);
+
+
                 //// Decide to continue or not
                 //if(!curvesAvail)
                 //{
@@ -1594,15 +1618,6 @@ namespace UCCreator
                         CreatedCurveSelRecipe = true;
                         continue;
                     }
-                    //foreach (NXOpen.CAE.SelectionRecipe selRecipe in myCAEPart.SelectionRecipes)
-                    //{
-                    //    if (selRecipe.Name.ToUpper() == targSelRecipeName.ToUpper())
-                    //    {
-                    //        log += "      Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> skipped (exists)" + Environment.NewLine;
-                    //        CreatedCurveSelRecipe = true;
-                    //        goto nextBoltDef;
-                    //    }
-                    //}
 
                     // Create Seletion Recipe (NX12)
                     NXOpen.CAE.AttributeSelectionRecipe myAttributeSelRecipe = myCAEPart.SelectionRecipes.CreateAttributeRecipe(
