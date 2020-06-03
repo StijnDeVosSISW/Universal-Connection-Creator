@@ -1096,6 +1096,20 @@ namespace UCCreator
 
                 log += "   -> # (A)FEM objects to process = " + allTargObjects.Count.ToString() + Environment.NewLine;
 
+
+                // Remove any duplicates from List
+                allTargObjects = allTargObjects.Distinct().ToList();
+
+                log += Environment.NewLine + 
+                    "Removing duplicates... " + Environment.NewLine +
+                     "   -> # (A)FEM objects to process = " + allTargObjects.Count.ToString() + Environment.NewLine;
+                
+                foreach (NXObject obj in allTargObjects)
+                {
+                    log += "   " + obj.Name.ToUpper() + Environment.NewLine;
+                }
+
+
                 myStopwatch.Stop();
                 log += Environment.NewLine + 
                     "[" + myStopwatch.Elapsed.TotalSeconds.ToString() + " seconds]" + Environment.NewLine;
@@ -1135,103 +1149,175 @@ namespace UCCreator
                     DetailExecutionTimes[0] = detailStopwatch.Elapsed.TotalSeconds;
 
 
-                    // Switch between FEM or AFEM target
-                    switch (targObj.GetType().ToString())
+
+
+                    // CREATE SELECTION RECIPES
+                    // ------------------------
+                    log += Environment.NewLine +
+                        "=================================================================================" + Environment.NewLine +
+                        targObj.Name.ToUpper() + Environment.NewLine +
+                        "=================================================================================" + Environment.NewLine;
+
+                    // Check whether it is a FEM or an Assembly FEM object
+                    bool isFEM = targObj.GetType().ToString() == "NXOpen.CAE.FemPart" ? true : false;
+
+                    if (isFEM) { log += "---> Recognized as FEM" + Environment.NewLine; }
+                    else { log += "---> Recognized as AFEM" + Environment.NewLine; }
+
+
+                    // If FEM, check if it should be processed or not
+                    // ----------------------------------------------
+                    // FEM should NOT be processed if:
+                    // - it does not contain any mesh objects
+                    //   => assumed that it represents a Bolt part family member, with just the CAD curve data
+                    if (isFEM)
                     {
-                        case "NXOpen.CAE.AssyFemPart":
+                        NXOpen.CAE.FemPart myFEM = (NXOpen.CAE.FemPart)targObj;
+                        if (myFEM.BaseFEModel.MeshManager.GetMeshes().Length < 1)
+                        {
                             log += Environment.NewLine +
-                                "=================================================================================" + Environment.NewLine +
-                                targObj.Name.ToUpper() + Environment.NewLine +
-                                "=================================================================================" + Environment.NewLine +
-                                "---> Recognized as AFEM" + Environment.NewLine;
-
-                            // CREATE SELECTION RECIPES
-                            // ------------------------
-                            detailStopwatch.Restart();
-
-                            SelRecipesHaveCurves = CreateSelectionRecipes((NXOpen.CAE.AssyFemPart)targObj);
-
-                            detailStopwatch.Stop();
-                            DetailExecutionTimes[1] = detailStopwatch.Elapsed.TotalSeconds;
-
-                            if (SelRecipesHaveCurves)
-                            {
-                                // CREATE UNIVERSAL BOLT CONNECTION DEFINITIONS
-                                // --------------------------------------------
-                                detailStopwatch.Restart();
-
-                                CreateUniversalBoltConnections((NXOpen.CAE.AssyFemPart)targObj, null);
-
-                                detailStopwatch.Stop();
-                                DetailExecutionTimes[2] = detailStopwatch.Elapsed.TotalSeconds;
-
-                                // UPDATE BOLT CONNECTIONS
-                                // -----------------------
-                                detailStopwatch.Restart();
-
-                                UpdateCAEObjectConnections((NXOpen.CAE.BaseFemPart)targObj);
-
-                                detailStopwatch.Stop();
-                                DetailExecutionTimes[3] = detailStopwatch.Elapsed.TotalSeconds;
-                            }
-
-                            break;
-
-                        case "NXOpen.CAE.FemPart":
-                            log += Environment.NewLine +
-                                "=================================================================================" + Environment.NewLine +
-                                targObj.Name.ToUpper() + Environment.NewLine +
-                                "=================================================================================" + Environment.NewLine +
-                                "---> Recognized as FEM" + Environment.NewLine;
-
-                            // Check if FEM should be processed or not
-                            // ---------------------------------------
-                            // FEM should NOT be processed if:
-                            // - it does not contain any mesh objects
-                            //   => assumed that it represents a Bolt part family member, with just the CAD curve data
-                            NXOpen.CAE.FemPart myFEM = (NXOpen.CAE.FemPart)targObj;
-                            if (myFEM.BaseFEModel.MeshManager.GetMeshes().Length < 1)
-                            {
-                                log += Environment.NewLine +
-                                    "===> FEM does not contain any mesh objects:  assumed to be a bolt representation  (-> SKIPPED)" + Environment.NewLine;
-                                break;
-                            }
-
-                            // CREATE SELECTION RECIPES
-                            // ------------------------
-                            detailStopwatch.Restart();
-
-                            SelRecipesHaveCurves = CreateSelectionRecipes((NXOpen.CAE.FemPart)targObj);
-
-                            detailStopwatch.Stop();
-                            DetailExecutionTimes[1] = detailStopwatch.Elapsed.TotalSeconds;
-
-                            if (SelRecipesHaveCurves)
-                            {
-                                // CREATE UNIVERSAL BOLT CONNECTION DEFINITIONS
-                                // --------------------------------------------
-                                detailStopwatch.Restart();
-
-                                CreateUniversalBoltConnections(null, (NXOpen.CAE.FemPart)targObj);
-
-                                detailStopwatch.Stop();
-                                DetailExecutionTimes[2] = detailStopwatch.Elapsed.TotalSeconds;
-
-                                // UPDATE BOLT CONNECTIONS
-                                // -----------------------
-                                detailStopwatch.Restart();
-
-                                UpdateCAEObjectConnections((NXOpen.CAE.BaseFemPart)targObj);
-
-                                detailStopwatch.Stop();
-                                DetailExecutionTimes[3] = detailStopwatch.Elapsed.TotalSeconds;
-                            }
-
-                            break;
-
-                        default:
-                            break;
+                                "===> FEM does not contain any mesh objects:  assumed to be a bolt representation  (-> SKIPPED)" + Environment.NewLine;
+                            i++;
+                            continue;
+                        }
                     }
+
+                    // Finally, create Selection Recipes
+                    detailStopwatch.Restart();
+
+                    SelRecipesHaveCurves = CreateSelectionRecipes((NXOpen.CAE.CaePart)targObj);
+
+                    detailStopwatch.Stop();
+                    DetailExecutionTimes[1] = detailStopwatch.Elapsed.TotalSeconds;
+
+
+                    if (SelRecipesHaveCurves)
+                    {
+                        // CREATE UNIVERSAL BOLT CONNECTION DEFINITIONS
+                        // --------------------------------------------
+                        detailStopwatch.Restart();
+
+                        if (isFEM)
+                        {
+                            CreateUniversalBoltConnections(null, (NXOpen.CAE.FemPart)targObj);
+                        }
+                        else
+                        {
+                            CreateUniversalBoltConnections((NXOpen.CAE.AssyFemPart)targObj, null);
+                        }
+
+                        detailStopwatch.Stop();
+                        DetailExecutionTimes[2] = detailStopwatch.Elapsed.TotalSeconds;
+
+                        // UPDATE BOLT CONNECTIONS
+                        // -----------------------
+                        detailStopwatch.Restart();
+
+                        UpdateCAEObjectConnections((NXOpen.CAE.BaseFemPart)targObj);
+
+                        detailStopwatch.Stop();
+                        DetailExecutionTimes[3] = detailStopwatch.Elapsed.TotalSeconds;
+                    }
+
+
+
+                    //// Switch between FEM or AFEM target
+                    //switch (targObj.GetType().ToString())
+                    //{
+                    //    case "NXOpen.CAE.AssyFemPart":
+                    //        log += Environment.NewLine +
+                    //            "=================================================================================" + Environment.NewLine +
+                    //            targObj.Name.ToUpper() + Environment.NewLine +
+                    //            "=================================================================================" + Environment.NewLine +
+                    //            "---> Recognized as AFEM" + Environment.NewLine;
+
+                    //        // CREATE SELECTION RECIPES
+                    //        // ------------------------
+                    //        detailStopwatch.Restart();
+
+                    //        SelRecipesHaveCurves = CreateSelectionRecipes((NXOpen.CAE.AssyFemPart)targObj);
+
+                    //        detailStopwatch.Stop();
+                    //        DetailExecutionTimes[1] = detailStopwatch.Elapsed.TotalSeconds;
+
+                    //        if (SelRecipesHaveCurves)
+                    //        {
+                    //            // CREATE UNIVERSAL BOLT CONNECTION DEFINITIONS
+                    //            // --------------------------------------------
+                    //            detailStopwatch.Restart();
+
+                    //            CreateUniversalBoltConnections((NXOpen.CAE.AssyFemPart)targObj, null);
+
+                    //            detailStopwatch.Stop();
+                    //            DetailExecutionTimes[2] = detailStopwatch.Elapsed.TotalSeconds;
+
+                    //            // UPDATE BOLT CONNECTIONS
+                    //            // -----------------------
+                    //            detailStopwatch.Restart();
+
+                    //            UpdateCAEObjectConnections((NXOpen.CAE.BaseFemPart)targObj);
+
+                    //            detailStopwatch.Stop();
+                    //            DetailExecutionTimes[3] = detailStopwatch.Elapsed.TotalSeconds;
+                    //        }
+
+                    //        break;
+
+                    //    case "NXOpen.CAE.FemPart":
+                    //        log += Environment.NewLine +
+                    //            "=================================================================================" + Environment.NewLine +
+                    //            targObj.Name.ToUpper() + Environment.NewLine +
+                    //            "=================================================================================" + Environment.NewLine +
+                    //            "---> Recognized as FEM" + Environment.NewLine;
+
+                    //        // Check if FEM should be processed or not
+                    //        // ---------------------------------------
+                    //        // FEM should NOT be processed if:
+                    //        // - it does not contain any mesh objects
+                    //        //   => assumed that it represents a Bolt part family member, with just the CAD curve data
+                    //        NXOpen.CAE.FemPart myFEM = (NXOpen.CAE.FemPart)targObj;
+                    //        if (myFEM.BaseFEModel.MeshManager.GetMeshes().Length < 1)
+                    //        {
+                    //            log += Environment.NewLine +
+                    //                "===> FEM does not contain any mesh objects:  assumed to be a bolt representation  (-> SKIPPED)" + Environment.NewLine;
+                    //            break;
+                    //        }
+
+                    //        // CREATE SELECTION RECIPES
+                    //        // ------------------------
+                    //        detailStopwatch.Restart();
+
+                    //        SelRecipesHaveCurves = CreateSelectionRecipes((NXOpen.CAE.FemPart)targObj);
+
+                    //        detailStopwatch.Stop();
+                    //        DetailExecutionTimes[1] = detailStopwatch.Elapsed.TotalSeconds;
+
+                    //        if (SelRecipesHaveCurves)
+                    //        {
+                    //            // CREATE UNIVERSAL BOLT CONNECTION DEFINITIONS
+                    //            // --------------------------------------------
+                    //            detailStopwatch.Restart();
+
+                    //            CreateUniversalBoltConnections(null, (NXOpen.CAE.FemPart)targObj);
+
+                    //            detailStopwatch.Stop();
+                    //            DetailExecutionTimes[2] = detailStopwatch.Elapsed.TotalSeconds;
+
+                    //            // UPDATE BOLT CONNECTIONS
+                    //            // -----------------------
+                    //            detailStopwatch.Restart();
+
+                    //            UpdateCAEObjectConnections((NXOpen.CAE.BaseFemPart)targObj);
+
+                    //            detailStopwatch.Stop();
+                    //            DetailExecutionTimes[3] = detailStopwatch.Elapsed.TotalSeconds;
+                    //        }
+
+                    //        break;
+
+                    //    default:
+                    //        break;
+                    //}
 
                     // Diagnostics
                     log += Environment.NewLine +
@@ -1440,6 +1526,20 @@ namespace UCCreator
                 if (theSession.Parts.BaseWork.Tag != myCAEPart.Tag) { theSession.Parts.SetWork((NXOpen.BasePart)myCAEPart); }
 
 
+
+                // Check if CAEPart object contains any Curve object with "Curve_" in its name
+                // ---------------------------------------------------------------------------
+
+                //// Decide to continue or not
+                //if(!curvesAvail)
+                //{
+                //    log += "      " + myCAEPart.Name + " does not contain any Curve object with Curve_ in its name  (-> SKIPPED)" + Environment.NewLine;
+
+                //    CreatedCurveSelRecipe = false;
+                //    return CreatedCurveSelRecipe;
+                //}
+
+
                 // Create "Get all meshes" Selection Recipe
                 // ----------------------------------------
                 // Get target name
@@ -1488,15 +1588,21 @@ namespace UCCreator
                     targSelRecipeName = boltDefinition.Name + " Curves";
 
                     // Check if not existing yet
-                    foreach (NXOpen.CAE.SelectionRecipe selRecipe in myCAEPart.SelectionRecipes)
+                    if (myCAEPart.SelectionRecipes.ToArray().Select(x=>x.Name.ToUpper()).Contains(targSelRecipeName.ToUpper()))
                     {
-                        if (selRecipe.Name.ToUpper() == targSelRecipeName.ToUpper())
-                        {
-                            log += "      Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> skipped (exists)" + Environment.NewLine;
-                            CreatedCurveSelRecipe = true;
-                            goto nextBoltDef;
-                        }
+                        log += "      Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> skipped (exists)" + Environment.NewLine;
+                        CreatedCurveSelRecipe = true;
+                        continue;
                     }
+                    //foreach (NXOpen.CAE.SelectionRecipe selRecipe in myCAEPart.SelectionRecipes)
+                    //{
+                    //    if (selRecipe.Name.ToUpper() == targSelRecipeName.ToUpper())
+                    //    {
+                    //        log += "      Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> skipped (exists)" + Environment.NewLine;
+                    //        CreatedCurveSelRecipe = true;
+                    //        goto nextBoltDef;
+                    //    }
+                    //}
 
                     // Create Seletion Recipe (NX12)
                     NXOpen.CAE.AttributeSelectionRecipe myAttributeSelRecipe = myCAEPart.SelectionRecipes.CreateAttributeRecipe(
@@ -1522,7 +1628,7 @@ namespace UCCreator
                         CreatedCurveSelRecipe = true;
                     }
 
-                nextBoltDef:;
+                //nextBoltDef:;
                 }
             }
             catch (Exception e)
@@ -1566,7 +1672,7 @@ namespace UCCreator
                 List<string> existingUnivConnNames = isAFEM 
                     ? myAFEM.BaseFEModel.ConnectionsContainer.GetAllConnections().Select(x => x.Name).ToList()
                     : myFEM.BaseFEModel.ConnectionsContainer.GetAllConnections().Select(x => x.Name).ToList();
-
+                
                 // Loop through all predefined Bolt Definitions
                 foreach (MODELS.BoltDefinition boltDefinition in allBoltDefinitions)
                 {
@@ -1721,7 +1827,7 @@ namespace UCCreator
                 // Realize all new Universal Bolt Connection definitions
                 // -----------------------------------------------------
                 log += Environment.NewLine +
-                    "   REALIZE UNIVERSAL BOLT CONNECTIONS" + Environment.NewLine;
+                    "   REALIZE UNIVERSAL BOLT CONNECTIONS" + Environment.NewLine + Environment.NewLine;
 
                 NXOpen.CAE.Connections.Element boltConnElement = isAFEM
                     ? myAFEM.BaseFEModel.ConnectionElementCollection.Create(NXOpen.CAE.Connections.ElementType.E1DSpider, "Element - BOLT DEFINITIONS", newBoltConnections.ToArray())
@@ -1767,8 +1873,6 @@ namespace UCCreator
                 {
                     // Check if it is a Universal Bolt Connection
                     NXOpen.CAE.Connections.Bolt myBoltConn = (NXOpen.CAE.Connections.Bolt)myConn;
-
-                    log += "---> TYPE = " + myBoltConn.GetType().ToString();
 
                     // Force an "update" of the Universal Bolt Connection
                     myBoltConn.MaxBoltLength.Value++;
