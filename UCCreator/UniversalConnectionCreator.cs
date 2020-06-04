@@ -44,6 +44,8 @@ namespace UCCreator
         private enum TargEnv { Production, Debug, Siemens };
 
         private static List<NXOpen.NXObject> allTargObjects = new List<NXObject>();
+        private static List<NXOpen.Part> underlyingCAD = new List<NXOpen.Part>();
+        private static List<NXOpen.CAE.CaePart> underlyingCAE = new List<NXOpen.CAE.CaePart>();
 
         private static string StorageFileName = "UCCreator_SavedBoltDefinitions";  // Name of Excel file in which content of Universal Conn Def tree will be stored for later use
         private static string StoragePath_server = null;
@@ -1140,6 +1142,7 @@ namespace UCCreator
                     SetNXstatusMessage("Processing unique (A)FEM objects :   " + i.ToString() + @"/" + tot.ToString() + "  (" + Math.Round(((double)i / tot) * 100) + "%)    " +
                         "[" + targObj.Name + "]");
 
+
                     // SET TO WORKING PART
                     // -------------------
                     detailStopwatch.Restart();
@@ -1147,8 +1150,6 @@ namespace UCCreator
 
                     detailStopwatch.Stop();
                     DetailExecutionTimes[0] = detailStopwatch.Elapsed.TotalSeconds;
-
-
 
 
                     // CREATE SELECTION RECIPES
@@ -1511,6 +1512,139 @@ namespace UCCreator
 
 
         /// <summary>
+        /// Process CAD assembly object and optionally loop through its child components
+        /// </summary>
+        /// <param name="myAFEM">Target AFEM object</param>
+        private static void GatherUnderlyingCAD(NXOpen.Part myCADassy)
+        {
+            try
+            {
+                log += "Adding CAD object = " + myCADassy.Name.ToUpper() + "   (" + myCADassy.GetType().ToString() + ")" + Environment.NewLine ;
+
+                underlyingCAD.Add(myCADassy);
+
+                // Cycle through all underlying FEM/AFEM objects and act appropriately
+                NXOpen.Assemblies.Component myRoot = myCADassy.ComponentAssembly.RootComponent;
+
+                //myRoot.
+
+                if (myRoot != null)
+                {
+                
+                    // Loop through all Child components of AFEM object
+                    foreach (NXOpen.Assemblies.Component myChild in myRoot.GetChildren())
+                    {
+                        //log += "CHILD : " + myChild.Name.ToString());
+
+                        // Get OwningPart object of Child component
+                        NXOpen.BasePart myBasePart = myChild.Prototype.OwningPart;
+
+                        GatherUnderlyingCAD((NXOpen.Part)myBasePart);
+
+                        //Type TargType = myBasePart.GetType();
+
+                        //if (TargType != null)
+                        //{
+                        //    switch (TargType.ToString())
+                        //    {
+                        //        case "NXOpen.CAE.AssyFemPart":
+                        //            //log += "Recognized as AFEM" + Environment.NewLine;
+
+                        //            ProcessFromAFEM((NXOpen.CAE.AssyFemPart)myBasePart);
+                        //            //ProcessChildrenAFEM(myChild);
+                        //            break;
+
+                        //        case "NXOpen.CAE.FemPart":
+                        //            //log += "Recognized as FEM" + Environment.NewLine;
+                        //            ProcessFromFEM((NXOpen.CAE.FemPart)myBasePart);
+                        //            break;
+
+                        //        default:
+                        //            //log += "Recognized as " + TargType.ToString() + " -> SKIPPED" + Environment.NewLine;
+                        //            break;
+                        //    }
+                        //}
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                log += "!ERROR - while processing children of CAD : " + Environment.NewLine +
+                    e.ToString() + Environment.NewLine;
+            }
+        }
+
+        /// <summary>
+        /// Get all Line/Curve objects that are available for a certain (A)FEM object
+        /// </summary>
+        private static void GetUnderlyingLineObjects(NXOpen.CAE.CaePart myCAEPart)
+        {
+            try
+            {
+                log += "Processing CAE object = " + myCAEPart.Name.ToUpper() + "   (" + myCAEPart.GetType().ToString() + ")" + Environment.NewLine;
+
+                if (!underlyingCAE.Contains(myCAEPart))
+                {
+                    underlyingCAE.Add(myCAEPart);
+
+                    // Get line objects
+                    //((NXOpen.CAE.FemPart)myCAEPart).
+                }
+                else
+                {
+                    log += "  -> not processed, as is duplicate of already processed CAE Part object!" + Environment.NewLine;
+                }
+
+                // Cycle through all underlying FEM/AFEM objects and act appropriately
+                NXOpen.Assemblies.Component myRoot = myCAEPart.ComponentAssembly.RootComponent;
+
+                if (myRoot != null)
+                {
+
+                    // Loop through all Child components of AFEM object
+                    foreach (NXOpen.Assemblies.Component myChild in myRoot.GetChildren())
+                    {
+                        //log += "CHILD : " + myChild.Name.ToString());
+
+                        // Get OwningPart object of Child component
+                        NXOpen.BasePart myBasePart = myChild.Prototype.OwningPart;
+
+                        GetUnderlyingLineObjects((NXOpen.CAE.CaePart)myBasePart);
+
+                        //Type TargType = myBasePart.GetType();
+
+                        //if (TargType != null)
+                        //{
+                        //    switch (TargType.ToString())
+                        //    {
+                        //        case "NXOpen.CAE.AssyFemPart":
+                        //            //log += "Recognized as AFEM" + Environment.NewLine;
+
+                        //            ProcessFromAFEM((NXOpen.CAE.AssyFemPart)myBasePart);
+                        //            //ProcessChildrenAFEM(myChild);
+                        //            break;
+
+                        //        case "NXOpen.CAE.FemPart":
+                        //            //log += "Recognized as FEM" + Environment.NewLine;
+                        //            ProcessFromFEM((NXOpen.CAE.FemPart)myBasePart);
+                        //            break;
+
+                        //        default:
+                        //            //log += "Recognized as " + TargType.ToString() + " -> SKIPPED" + Environment.NewLine;
+                        //            break;
+                        //    }
+                        //}
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                log += "!ERROR - while processing children of CAD : " + Environment.NewLine +
+                    e.ToString() + Environment.NewLine;
+            }
+        }
+
+        /// <summary>
         /// Create predefined Selection Recipes
         /// </summary>
         /// <param name="myAFEM">Target AFEM object</param>
@@ -1527,8 +1661,48 @@ namespace UCCreator
 
 
 
-                // Check if CAEPart object contains any Curve object with "Curve_" in its name
-                // ---------------------------------------------------------------------------
+                //// Check if CAEPart object contains any Curve object with "Curve_" in its name
+                //// ---------------------------------------------------------------------------
+                //// Gather all underlying CAD objects
+                //switch (myCAEPart.GetType().ToString())
+                //{
+                //    case "NXOpen.CAE.FemPart":
+                //        NXOpen.CAE.FemPart myFEM = (NXOpen.CAE.FemPart)myCAEPart;
+
+                //        underlyingCAE.Clear();
+                //        GetUnderlyingLineObjects(myCAEPart);
+
+                //        //// Get all underlying CAD objects
+                //        //underlyingCAD.Clear();
+                //        //GatherUnderlyingCAD(myFEM.MasterCadPart);
+                //        break;
+
+                //    case "NXOpen.CAE.AssyFemPart":
+                //        NXOpen.CAE.AssyFemPart myAFEM = (NXOpen.CAE.AssyFemPart)myCAEPart;
+
+                //        underlyingCAE.Clear();
+                //        GetUnderlyingLineObjects(myCAEPart);
+
+                //        //// Get all underlying CAD objects
+                //        //underlyingCAD.Clear();
+                //        //GatherUnderlyingCAD(myAFEM.MasterCadPart);
+                //        break;
+
+                //    default:
+                //        return false;
+                //        break;
+                //}
+
+                //// Get all names of Lines in the underlying CAD objects
+                //foreach (NXOpen.Part cad in underlyingCAD)
+                //{
+                //    log += "   CAD object:  " + cad.Name.ToUpper() + Environment.NewLine;
+                //}
+
+                // If no names found, then do not process
+
+
+                // If
 
                 //((NXOpen.CAE.FemPart)myCAEPart).Curves
                 //NXOpen.Tag theTag = Tag.Null;
@@ -1537,7 +1711,7 @@ namespace UCCreator
                 //{
                 //    log += "Checking new object" + Environment.NewLine;
 
-                    
+
 
                 //    if (theTag != Tag.Null)
                 //    {
