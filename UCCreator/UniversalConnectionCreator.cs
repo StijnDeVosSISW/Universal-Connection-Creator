@@ -73,8 +73,8 @@ namespace UCCreator
                 myStopwatch = new System.Diagnostics.Stopwatch();
 
                 // Set path to GUI .dlx file 
-                //TargEnv targEnv = TargEnv.Production;
-                TargEnv targEnv = TargEnv.Debug;
+                TargEnv targEnv = TargEnv.Production;
+                //TargEnv targEnv = TargEnv.Debug;
                 //TargEnv targEnv = TargEnv.Siemens;
 
                 switch (targEnv)
@@ -1142,6 +1142,23 @@ namespace UCCreator
                     SetNXstatusMessage("Processing unique (A)FEM objects :   " + i.ToString() + @"/" + tot.ToString() + "  (" + Math.Round(((double)i / tot) * 100) + "%)    " +
                         "[" + targObj.Name + "]");
 
+                    log += Environment.NewLine +
+                        "=================================================================================" + Environment.NewLine +
+                        targObj.Name.ToUpper() + Environment.NewLine +
+                        "=================================================================================" + Environment.NewLine;
+
+                    // Check whether it is a FEM or an Assembly FEM object
+                    bool isFEM = targObj.GetType().ToString() == "NXOpen.CAE.FemPart" ? true : false;
+
+                    if (isFEM) { log += "---> Recognized as FEM" + Environment.NewLine; }
+                    else { log += "---> Recognized as AFEM" + Environment.NewLine; }
+
+                    // If target object is a FEM, check if FEMs should be processed or not
+                    if (isFEM && ProcessAll)
+                    {
+                        log += "---> Current run is processing Assembly FEM levels only:   SKIPPED" + Environment.NewLine;
+                        continue;
+                    }
 
                     // SET TO WORKING PART
                     // -------------------
@@ -1154,21 +1171,7 @@ namespace UCCreator
 
                     // CREATE SELECTION RECIPES
                     // ------------------------
-                    log += Environment.NewLine +
-                        "=================================================================================" + Environment.NewLine +
-                        targObj.Name.ToUpper() + Environment.NewLine +
-                        "=================================================================================" + Environment.NewLine;
-
-                    // Check whether it is a FEM or an Assembly FEM object
-                    bool isFEM = targObj.GetType().ToString() == "NXOpen.CAE.FemPart" ? true : false;
-
-                    if (isFEM) { log += "---> Recognized as FEM" + Environment.NewLine; }
-                    else { log += "---> Recognized as AFEM" + Environment.NewLine; }
-
-
-                    // If FEM, check if it should be processed or not
-                    // ----------------------------------------------
-                    // FEM should NOT be processed if:
+                    // (If a FEM,) FEM should NOT be processed if:
                     // - it does not contain any mesh objects
                     //   => assumed that it represents a Bolt part family member, with just the CAD curve data
                     if (isFEM)
