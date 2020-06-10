@@ -44,6 +44,8 @@ namespace UCCreator
         private enum TargEnv { Production, Debug, Siemens };
 
         private static List<NXOpen.NXObject> allTargObjects = new List<NXObject>();
+        private static List<NXOpen.NXObject> objectsToUpdate = new List<NXObject>();
+
         private static List<NXOpen.Part> underlyingCAD = new List<NXOpen.Part>();
         private static List<NXOpen.CAE.CaePart> underlyingCAE = new List<NXOpen.CAE.CaePart>();
 
@@ -1213,14 +1215,15 @@ namespace UCCreator
                         detailStopwatch.Stop();
                         DetailExecutionTimes[2] = detailStopwatch.Elapsed.TotalSeconds;
 
-                        // UPDATE BOLT CONNECTIONS
-                        // -----------------------
-                        detailStopwatch.Restart();
+                        //// UPDATE BOLT CONNECTIONS     ---> Moved to end
+                        //// -----------------------
+                        //detailStopwatch.Restart();
 
-                        UpdateCAEObjectConnections((NXOpen.CAE.BaseFemPart)targObj);
+                        //UpdateCAEObjectConnections((NXOpen.CAE.BaseFemPart)targObj);
+                        objectsToUpdate.Add(targObj);
 
-                        detailStopwatch.Stop();
-                        DetailExecutionTimes[3] = detailStopwatch.Elapsed.TotalSeconds;
+                        //detailStopwatch.Stop();
+                        //DetailExecutionTimes[3] = detailStopwatch.Elapsed.TotalSeconds;
                     }
 
 
@@ -1344,61 +1347,34 @@ namespace UCCreator
 
 
                 #region UPDATE EACH (A)FEM OBJECT
-                //// -------------------------
-                //// UPDATE EACH (A)FEM OBJECT
-                //// -------------------------
-                //myStopwatch.Restart();
-                //log += Environment.NewLine +
-                //    " ------------------------------------------------ " + Environment.NewLine +
-                //    "| Update (A)FEM objects that have pending update |" + Environment.NewLine +
-                //    " ------------------------------------------------ " + Environment.NewLine;
+                // -------------------------
+                // UPDATE EACH (A)FEM OBJECT
+                // -------------------------
+                myStopwatch.Restart();
+                log += Environment.NewLine +
+                    " ------------------------------------------------ " + Environment.NewLine +
+                    "| Update (A)FEM objects that have pending update |" + Environment.NewLine +
+                    " ------------------------------------------------ " + Environment.NewLine;
 
-                //int j = 1;
-                //tot = allTargObjects.Count;
+                // Reverse order of list of object to update, to make sure that the updating happens bottom-up
+                objectsToUpdate.Reverse();
 
-                //foreach (NXObject targObj in allTargObjects)
-                //{
-                //    SetNXstatusMessage("Updating (A)FEM objects :   " + j.ToString() + @"/" + tot.ToString() + "  (" + Math.Round(((double)j / tot) * 100) + "%)    " +
-                //        "[" + targObj.Name + "]");
+                int j = 1;
+                tot = objectsToUpdate.Count;
 
+                foreach (NXObject targObj in objectsToUpdate)
+                {
+                    SetNXstatusMessage("Updating (A)FEM objects :   " + j.ToString() + @"/" + tot.ToString() + "  (" + Math.Round(((double)j / tot) * 100) + "%)    " +
+                        "[" + targObj.Name + "]");
 
-                //    // Set target (A)FEM to working
-                //    NXOpen.CAE.BaseFemPart myCAEpart = (NXOpen.CAE.BaseFemPart)targObj;
-                //    if (theSession.Parts.BaseWork.Tag != myCAEpart.Tag) { theSession.Parts.SetWork(myCAEpart); }
+                    UpdateCAEObjectConnections((NXOpen.CAE.BaseFemPart)targObj);
 
-                //    // Force "update" status for each Universal Bolt Connection
-                //    foreach (NXOpen.CAE.Connections.IConnection myConn in myCAEpart.BaseFEModel.ConnectionsContainer.GetAllConnections())
-                //    {
-                //        try
-                //        {
-                //            // Check if it is a Universal Bolt Connection
-                //            NXOpen.CAE.Connections.Bolt myBoltConn = (NXOpen.CAE.Connections.Bolt)myConn;
+                    j++;
+                }
 
-                //            // Force an "update" of the Universal Bolt Connection
-                //            myBoltConn.MaxBoltLength.Value++;
-                //            myBoltConn.MaxBoltLength.Value--;
-
-                //            log += "   Update forced of:  " + myBoltConn.Name.ToUpper() + Environment.NewLine;
-                //        }
-                //        catch (Exception)
-                //        {
-                //            // Not a Universal Bolt Connection
-                //        }
-                //    }
-
-                //    // Update AFEM to realize all Universal Bolt Connections
-                //    //if (myAFEM.BaseFEModel.AskUpdatePending())
-                //    //{
-                //    myCAEpart.BaseFEModel.UpdateFemodel();
-                //    log += "   UPDATED:  " + myCAEpart.Name.ToUpper() + Environment.NewLine;
-                //    //}
-
-                //    j++;
-                //}
-
-                //myStopwatch.Stop();
-                //log += "[" + myStopwatch.Elapsed.TotalSeconds.ToString() + " seconds]" + Environment.NewLine;
-                //ExecutionTimes.Add(myStopwatch.Elapsed.TotalSeconds);
+                myStopwatch.Stop();
+                log += "[" + myStopwatch.Elapsed.TotalSeconds.ToString() + " seconds]" + Environment.NewLine;
+                ExecutionTimes.Add(myStopwatch.Elapsed.TotalSeconds);
                 #endregion
 
 
@@ -1414,8 +1390,8 @@ namespace UCCreator
                     "-----------" + Environment.NewLine +
                     "CREATE LIST OF PREDEFINED BOLT CONNECTIONS =  " + ExecutionTimes[0].ToString() + " seconds" + Environment.NewLine +
                     "GATHER ALL (A)FEM OBJECTS TO PROCESS       =  " + ExecutionTimes[1].ToString() + " seconds" + Environment.NewLine +
-                    "PROCESS EACH (A)FEM OBJECT                 =  " + ExecutionTimes[2].ToString() + " seconds" + Environment.NewLine;
-                    //"UPDATE EACH (A)FEM OBJECT                  =  " + ExecutionTimes[3].ToString() + " seconds" + Environment.NewLine;
+                    "PROCESS EACH (A)FEM OBJECT                 =  " + ExecutionTimes[2].ToString() + " seconds" + Environment.NewLine +
+                    "UPDATE EACH (A)FEM OBJECT                  =  " + ExecutionTimes[3].ToString() + " seconds" + Environment.NewLine;
             }
             catch (Exception e)
             {
