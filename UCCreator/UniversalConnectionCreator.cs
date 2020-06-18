@@ -1362,6 +1362,7 @@ namespace UCCreator
                 int j = 1;
                 tot = objectsToUpdate.Count;
 
+                // Update each modified object
                 foreach (NXObject targObj in objectsToUpdate)
                 {
                     SetNXstatusMessage("Updating (A)FEM objects :   " + j.ToString() + @"/" + tot.ToString() + "  (" + Math.Round(((double)j / tot) * 100) + "%)    " +
@@ -1783,11 +1784,10 @@ namespace UCCreator
 
                     //log += "   Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> created" + Environment.NewLine;
 
-                    // If Selection Recipe contains 0 entities, delete again
+                    // If Selection Recipe contains 0 entities, mark for deleting
                     if (myAttributeSelRecipe.GetEntities().Length == 0)
                     {
                         theSession.UpdateManager.AddObjectsToDeleteList(new TaggedObject[] { myAttributeSelRecipe });
-                        theSession.UpdateManager.DoUpdate(new Session.UndoMarkId());
                         log += "      Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> skipped (0 entities)" + Environment.NewLine;
                     }
                     else
@@ -1798,6 +1798,10 @@ namespace UCCreator
 
                 //nextBoltDef:;
                 }
+
+                // Delete all empty Selection Recipes
+                theSession.UpdateManager.DoUpdate(new Session.UndoMarkId());
+                log += "      Deleted all skipped Selection Recipes again" + Environment.NewLine;
             }
             catch (Exception e)
             {
