@@ -46,8 +46,8 @@ namespace UCCreator
         private static List<NXOpen.NXObject> allTargObjects = new List<NXObject>();
         private static List<NXOpen.NXObject> objectsToUpdate = new List<NXObject>();
 
-        private static List<NXOpen.Part> underlyingCAD = new List<NXOpen.Part>();
-        private static List<NXOpen.CAE.CaePart> underlyingCAE = new List<NXOpen.CAE.CaePart>();
+        //private static List<NXOpen.Part> underlyingCAD = new List<NXOpen.Part>();
+        //private static List<NXOpen.CAE.CaePart> underlyingCAE = new List<NXOpen.CAE.CaePart>();
 
         private static string StorageFileName = "UCCreator_SavedBoltDefinitions";  // Name of Excel file in which content of Universal Conn Def tree will be stored for later use
         private static string StoragePath_server = null;
@@ -216,9 +216,6 @@ namespace UCCreator
         {
             if (theDialog != null)
             {
-                // Store current Tree List content to use in next session
-                //StoreUnivConnList();
-
                 theDialog.Dispose();
                 theDialog = null;
             }
@@ -425,10 +422,6 @@ namespace UCCreator
                         default:
                             break;
                     }
-                    //if (nativeFileBrowser0.Path != "" && File.Exists(nativeFileBrowser0.Path))
-                    //{
-                    //    ImportDefsFromExcel(nativeFileBrowser0.Path);
-                    //}
                 }
                 else if (block == nativeFileBrowser0)
                 {
@@ -451,8 +444,6 @@ namespace UCCreator
                 }
                 else if (block == enum0)
                 {
-                    //log += "enum0.ValueAsString = " + enum0.ValueAsString);
-
                     switch (enum0.ValueAsString)
                     {
                         case "This level and all sub-levels":
@@ -813,21 +804,8 @@ namespace UCCreator
         {
             try
             {
-                //log += Environment.NewLine +
-                //    " -------------------------------- " + Environment.NewLine +
-                //    "| IMPORT STORED BOLT DEFINITIONS |" + Environment.NewLine +
-                //    " -------------------------------- " + Environment.NewLine;
-
                 // Get target file
                 // ---------------
-                //// Get target file path to stored Excel file
-                //string filePath = System.Reflection.Assembly.GetExecutingAssembly().CodeBase;
-                //filePath = filePath.Remove(filePath.LastIndexOf("/")) + "\\" + StorageFileName + ".txt";
-                //filePath = filePath.Substring(filePath.IndexOf("/")).Substring(3).Replace("/", "\\");
-
-                //log += "File path = " + Environment.NewLine +
-                //    filePath);
-
                 // Check if it exists
                 if (!File.Exists(filePath))
                 {
@@ -943,9 +921,6 @@ namespace UCCreator
                     " ----------------------------------------- " + Environment.NewLine;
 
                 // Get target Excel file path
-                //string filePath = System.Reflection.Assembly.GetExecutingAssembly().CodeBase;
-                //filePath = filePath.Remove(filePath.LastIndexOf("/")) + "\\"+ StorageFileName + ".txt";
-                //filePath = filePath.Substring(filePath.IndexOf("/")).Substring(3).Replace("/", "\\");
                 string filePath = StoragePath_user;
 
                 //log += "Target file path :  " + filePath);
@@ -1215,116 +1190,10 @@ namespace UCCreator
                         detailStopwatch.Stop();
                         DetailExecutionTimes[2] = detailStopwatch.Elapsed.TotalSeconds;
 
-                        //// UPDATE BOLT CONNECTIONS     ---> Moved to end
-                        //// -----------------------
-                        //detailStopwatch.Restart();
-
-                        //UpdateCAEObjectConnections((NXOpen.CAE.BaseFemPart)targObj);
+                        // UPDATE BOLT CONNECTIONS     ---> Moved to end
+                        // -----------------------
                         objectsToUpdate.Add(targObj);
-
-                        //detailStopwatch.Stop();
-                        //DetailExecutionTimes[3] = detailStopwatch.Elapsed.TotalSeconds;
                     }
-
-
-
-                    //// Switch between FEM or AFEM target
-                    //switch (targObj.GetType().ToString())
-                    //{
-                    //    case "NXOpen.CAE.AssyFemPart":
-                    //        log += Environment.NewLine +
-                    //            "=================================================================================" + Environment.NewLine +
-                    //            targObj.Name.ToUpper() + Environment.NewLine +
-                    //            "=================================================================================" + Environment.NewLine +
-                    //            "---> Recognized as AFEM" + Environment.NewLine;
-
-                    //        // CREATE SELECTION RECIPES
-                    //        // ------------------------
-                    //        detailStopwatch.Restart();
-
-                    //        SelRecipesHaveCurves = CreateSelectionRecipes((NXOpen.CAE.AssyFemPart)targObj);
-
-                    //        detailStopwatch.Stop();
-                    //        DetailExecutionTimes[1] = detailStopwatch.Elapsed.TotalSeconds;
-
-                    //        if (SelRecipesHaveCurves)
-                    //        {
-                    //            // CREATE UNIVERSAL BOLT CONNECTION DEFINITIONS
-                    //            // --------------------------------------------
-                    //            detailStopwatch.Restart();
-
-                    //            CreateUniversalBoltConnections((NXOpen.CAE.AssyFemPart)targObj, null);
-
-                    //            detailStopwatch.Stop();
-                    //            DetailExecutionTimes[2] = detailStopwatch.Elapsed.TotalSeconds;
-
-                    //            // UPDATE BOLT CONNECTIONS
-                    //            // -----------------------
-                    //            detailStopwatch.Restart();
-
-                    //            UpdateCAEObjectConnections((NXOpen.CAE.BaseFemPart)targObj);
-
-                    //            detailStopwatch.Stop();
-                    //            DetailExecutionTimes[3] = detailStopwatch.Elapsed.TotalSeconds;
-                    //        }
-
-                    //        break;
-
-                    //    case "NXOpen.CAE.FemPart":
-                    //        log += Environment.NewLine +
-                    //            "=================================================================================" + Environment.NewLine +
-                    //            targObj.Name.ToUpper() + Environment.NewLine +
-                    //            "=================================================================================" + Environment.NewLine +
-                    //            "---> Recognized as FEM" + Environment.NewLine;
-
-                    //        // Check if FEM should be processed or not
-                    //        // ---------------------------------------
-                    //        // FEM should NOT be processed if:
-                    //        // - it does not contain any mesh objects
-                    //        //   => assumed that it represents a Bolt part family member, with just the CAD curve data
-                    //        NXOpen.CAE.FemPart myFEM = (NXOpen.CAE.FemPart)targObj;
-                    //        if (myFEM.BaseFEModel.MeshManager.GetMeshes().Length < 1)
-                    //        {
-                    //            log += Environment.NewLine +
-                    //                "===> FEM does not contain any mesh objects:  assumed to be a bolt representation  (-> SKIPPED)" + Environment.NewLine;
-                    //            break;
-                    //        }
-
-                    //        // CREATE SELECTION RECIPES
-                    //        // ------------------------
-                    //        detailStopwatch.Restart();
-
-                    //        SelRecipesHaveCurves = CreateSelectionRecipes((NXOpen.CAE.FemPart)targObj);
-
-                    //        detailStopwatch.Stop();
-                    //        DetailExecutionTimes[1] = detailStopwatch.Elapsed.TotalSeconds;
-
-                    //        if (SelRecipesHaveCurves)
-                    //        {
-                    //            // CREATE UNIVERSAL BOLT CONNECTION DEFINITIONS
-                    //            // --------------------------------------------
-                    //            detailStopwatch.Restart();
-
-                    //            CreateUniversalBoltConnections(null, (NXOpen.CAE.FemPart)targObj);
-
-                    //            detailStopwatch.Stop();
-                    //            DetailExecutionTimes[2] = detailStopwatch.Elapsed.TotalSeconds;
-
-                    //            // UPDATE BOLT CONNECTIONS
-                    //            // -----------------------
-                    //            detailStopwatch.Restart();
-
-                    //            UpdateCAEObjectConnections((NXOpen.CAE.BaseFemPart)targObj);
-
-                    //            detailStopwatch.Stop();
-                    //            DetailExecutionTimes[3] = detailStopwatch.Elapsed.TotalSeconds;
-                    //        }
-
-                    //        break;
-
-                    //    default:
-                    //        break;
-                    //}
 
                     // Diagnostics
                     log += Environment.NewLine +
@@ -1336,7 +1205,6 @@ namespace UCCreator
                         "UPDATE BOLT CONNECTIONS           =  " + DetailExecutionTimes[3].ToString() + " seconds" + Environment.NewLine;
                         
                     i++;
-
                 }
 
                 myStopwatch.Stop();
@@ -1491,138 +1359,138 @@ namespace UCCreator
         }
 
 
-        /// <summary>
-        /// Process CAD assembly object and optionally loop through its child components
-        /// </summary>
-        /// <param name="myAFEM">Target AFEM object</param>
-        private static void GatherUnderlyingCAD(NXOpen.Part myCADassy)
-        {
-            try
-            {
-                log += "Adding CAD object = " + myCADassy.Name.ToUpper() + "   (" + myCADassy.GetType().ToString() + ")" + Environment.NewLine ;
+        ///// <summary>
+        ///// Process CAD assembly object and optionally loop through its child components
+        ///// </summary>
+        ///// <param name="myAFEM">Target AFEM object</param>
+        //private static void GatherUnderlyingCAD(NXOpen.Part myCADassy)
+        //{
+        //    try
+        //    {
+        //        log += "Adding CAD object = " + myCADassy.Name.ToUpper() + "   (" + myCADassy.GetType().ToString() + ")" + Environment.NewLine ;
 
-                underlyingCAD.Add(myCADassy);
+        //        underlyingCAD.Add(myCADassy);
 
-                // Cycle through all underlying FEM/AFEM objects and act appropriately
-                NXOpen.Assemblies.Component myRoot = myCADassy.ComponentAssembly.RootComponent;
+        //        // Cycle through all underlying FEM/AFEM objects and act appropriately
+        //        NXOpen.Assemblies.Component myRoot = myCADassy.ComponentAssembly.RootComponent;
 
-                //myRoot.
+        //        //myRoot.
 
-                if (myRoot != null)
-                {
+        //        if (myRoot != null)
+        //        {
                 
-                    // Loop through all Child components of AFEM object
-                    foreach (NXOpen.Assemblies.Component myChild in myRoot.GetChildren())
-                    {
-                        //log += "CHILD : " + myChild.Name.ToString());
+        //            // Loop through all Child components of AFEM object
+        //            foreach (NXOpen.Assemblies.Component myChild in myRoot.GetChildren())
+        //            {
+        //                //log += "CHILD : " + myChild.Name.ToString());
 
-                        // Get OwningPart object of Child component
-                        NXOpen.BasePart myBasePart = myChild.Prototype.OwningPart;
+        //                // Get OwningPart object of Child component
+        //                NXOpen.BasePart myBasePart = myChild.Prototype.OwningPart;
 
-                        GatherUnderlyingCAD((NXOpen.Part)myBasePart);
+        //                GatherUnderlyingCAD((NXOpen.Part)myBasePart);
 
-                        //Type TargType = myBasePart.GetType();
+        //                //Type TargType = myBasePart.GetType();
 
-                        //if (TargType != null)
-                        //{
-                        //    switch (TargType.ToString())
-                        //    {
-                        //        case "NXOpen.CAE.AssyFemPart":
-                        //            //log += "Recognized as AFEM" + Environment.NewLine;
+        //                //if (TargType != null)
+        //                //{
+        //                //    switch (TargType.ToString())
+        //                //    {
+        //                //        case "NXOpen.CAE.AssyFemPart":
+        //                //            //log += "Recognized as AFEM" + Environment.NewLine;
 
-                        //            ProcessFromAFEM((NXOpen.CAE.AssyFemPart)myBasePart);
-                        //            //ProcessChildrenAFEM(myChild);
-                        //            break;
+        //                //            ProcessFromAFEM((NXOpen.CAE.AssyFemPart)myBasePart);
+        //                //            //ProcessChildrenAFEM(myChild);
+        //                //            break;
 
-                        //        case "NXOpen.CAE.FemPart":
-                        //            //log += "Recognized as FEM" + Environment.NewLine;
-                        //            ProcessFromFEM((NXOpen.CAE.FemPart)myBasePart);
-                        //            break;
+        //                //        case "NXOpen.CAE.FemPart":
+        //                //            //log += "Recognized as FEM" + Environment.NewLine;
+        //                //            ProcessFromFEM((NXOpen.CAE.FemPart)myBasePart);
+        //                //            break;
 
-                        //        default:
-                        //            //log += "Recognized as " + TargType.ToString() + " -> SKIPPED" + Environment.NewLine;
-                        //            break;
-                        //    }
-                        //}
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                log += "!ERROR - while processing children of CAD : " + Environment.NewLine +
-                    e.ToString() + Environment.NewLine;
-            }
-        }
+        //                //        default:
+        //                //            //log += "Recognized as " + TargType.ToString() + " -> SKIPPED" + Environment.NewLine;
+        //                //            break;
+        //                //    }
+        //                //}
+        //            }
+        //        }
+        //    }
+        //    catch (Exception e)
+        //    {
+        //        log += "!ERROR - while processing children of CAD : " + Environment.NewLine +
+        //            e.ToString() + Environment.NewLine;
+        //    }
+        //}
 
-        /// <summary>
-        /// Get all Line/Curve objects that are available for a certain (A)FEM object
-        /// </summary>
-        private static void GetUnderlyingLineObjects(NXOpen.CAE.CaePart myCAEPart)
-        {
-            try
-            {
-                log += "Processing CAE object = " + myCAEPart.Name.ToUpper() + "   (" + myCAEPart.GetType().ToString() + ")" + Environment.NewLine;
+        ///// <summary>
+        ///// Get all Line/Curve objects that are available for a certain (A)FEM object
+        ///// </summary>
+        //private static void GetUnderlyingLineObjects(NXOpen.CAE.CaePart myCAEPart)
+        //{
+        //    try
+        //    {
+        //        log += "Processing CAE object = " + myCAEPart.Name.ToUpper() + "   (" + myCAEPart.GetType().ToString() + ")" + Environment.NewLine;
 
-                if (!underlyingCAE.Contains(myCAEPart))
-                {
-                    underlyingCAE.Add(myCAEPart);
+        //        if (!underlyingCAE.Contains(myCAEPart))
+        //        {
+        //            underlyingCAE.Add(myCAEPart);
 
-                    // Get line objects
-                    //((NXOpen.CAE.FemPart)myCAEPart).
-                }
-                else
-                {
-                    log += "  -> not processed, as is duplicate of already processed CAE Part object!" + Environment.NewLine;
-                }
+        //            // Get line objects
+        //            //((NXOpen.CAE.FemPart)myCAEPart).
+        //        }
+        //        else
+        //        {
+        //            log += "  -> not processed, as is duplicate of already processed CAE Part object!" + Environment.NewLine;
+        //        }
 
-                // Cycle through all underlying FEM/AFEM objects and act appropriately
-                NXOpen.Assemblies.Component myRoot = myCAEPart.ComponentAssembly.RootComponent;
+        //        // Cycle through all underlying FEM/AFEM objects and act appropriately
+        //        NXOpen.Assemblies.Component myRoot = myCAEPart.ComponentAssembly.RootComponent;
 
-                if (myRoot != null)
-                {
+        //        if (myRoot != null)
+        //        {
 
-                    // Loop through all Child components of AFEM object
-                    foreach (NXOpen.Assemblies.Component myChild in myRoot.GetChildren())
-                    {
-                        //log += "CHILD : " + myChild.Name.ToString());
+        //            // Loop through all Child components of AFEM object
+        //            foreach (NXOpen.Assemblies.Component myChild in myRoot.GetChildren())
+        //            {
+        //                //log += "CHILD : " + myChild.Name.ToString());
 
-                        // Get OwningPart object of Child component
-                        NXOpen.BasePart myBasePart = myChild.Prototype.OwningPart;
+        //                // Get OwningPart object of Child component
+        //                NXOpen.BasePart myBasePart = myChild.Prototype.OwningPart;
 
-                        GetUnderlyingLineObjects((NXOpen.CAE.CaePart)myBasePart);
+        //                GetUnderlyingLineObjects((NXOpen.CAE.CaePart)myBasePart);
 
-                        //Type TargType = myBasePart.GetType();
+        //                //Type TargType = myBasePart.GetType();
 
-                        //if (TargType != null)
-                        //{
-                        //    switch (TargType.ToString())
-                        //    {
-                        //        case "NXOpen.CAE.AssyFemPart":
-                        //            //log += "Recognized as AFEM" + Environment.NewLine;
+        //                //if (TargType != null)
+        //                //{
+        //                //    switch (TargType.ToString())
+        //                //    {
+        //                //        case "NXOpen.CAE.AssyFemPart":
+        //                //            //log += "Recognized as AFEM" + Environment.NewLine;
 
-                        //            ProcessFromAFEM((NXOpen.CAE.AssyFemPart)myBasePart);
-                        //            //ProcessChildrenAFEM(myChild);
-                        //            break;
+        //                //            ProcessFromAFEM((NXOpen.CAE.AssyFemPart)myBasePart);
+        //                //            //ProcessChildrenAFEM(myChild);
+        //                //            break;
 
-                        //        case "NXOpen.CAE.FemPart":
-                        //            //log += "Recognized as FEM" + Environment.NewLine;
-                        //            ProcessFromFEM((NXOpen.CAE.FemPart)myBasePart);
-                        //            break;
+        //                //        case "NXOpen.CAE.FemPart":
+        //                //            //log += "Recognized as FEM" + Environment.NewLine;
+        //                //            ProcessFromFEM((NXOpen.CAE.FemPart)myBasePart);
+        //                //            break;
 
-                        //        default:
-                        //            //log += "Recognized as " + TargType.ToString() + " -> SKIPPED" + Environment.NewLine;
-                        //            break;
-                        //    }
-                        //}
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                log += "!ERROR - while processing children of CAD : " + Environment.NewLine +
-                    e.ToString() + Environment.NewLine;
-            }
-        }
+        //                //        default:
+        //                //            //log += "Recognized as " + TargType.ToString() + " -> SKIPPED" + Environment.NewLine;
+        //                //            break;
+        //                //    }
+        //                //}
+        //            }
+        //        }
+        //    }
+        //    catch (Exception e)
+        //    {
+        //        log += "!ERROR - while processing children of CAD : " + Environment.NewLine +
+        //            e.ToString() + Environment.NewLine;
+        //    }
+        //}
 
         /// <summary>
         /// Create predefined Selection Recipes
@@ -1637,85 +1505,8 @@ namespace UCCreator
                 log += Environment.NewLine +
                 "   CREATE SELECTION RECIPES" + Environment.NewLine + Environment.NewLine;
 
+                // Set Working, if needed
                 if (theSession.Parts.BaseWork.Tag != myCAEPart.Tag) { theSession.Parts.SetWork((NXOpen.BasePart)myCAEPart); }
-
-
-
-                //// Check if CAEPart object contains any Curve object with "Curve_" in its name
-                //// ---------------------------------------------------------------------------
-                //// Gather all underlying CAD objects
-                //switch (myCAEPart.GetType().ToString())
-                //{
-                //    case "NXOpen.CAE.FemPart":
-                //        NXOpen.CAE.FemPart myFEM = (NXOpen.CAE.FemPart)myCAEPart;
-
-                //        underlyingCAE.Clear();
-                //        GetUnderlyingLineObjects(myCAEPart);
-
-                //        //// Get all underlying CAD objects
-                //        //underlyingCAD.Clear();
-                //        //GatherUnderlyingCAD(myFEM.MasterCadPart);
-                //        break;
-
-                //    case "NXOpen.CAE.AssyFemPart":
-                //        NXOpen.CAE.AssyFemPart myAFEM = (NXOpen.CAE.AssyFemPart)myCAEPart;
-
-                //        underlyingCAE.Clear();
-                //        GetUnderlyingLineObjects(myCAEPart);
-
-                //        //// Get all underlying CAD objects
-                //        //underlyingCAD.Clear();
-                //        //GatherUnderlyingCAD(myAFEM.MasterCadPart);
-                //        break;
-
-                //    default:
-                //        return false;
-                //        break;
-                //}
-
-                //// Get all names of Lines in the underlying CAD objects
-                //foreach (NXOpen.Part cad in underlyingCAD)
-                //{
-                //    log += "   CAD object:  " + cad.Name.ToUpper() + Environment.NewLine;
-                //}
-
-                // If no names found, then do not process
-
-
-                // If
-
-                //((NXOpen.CAE.FemPart)myCAEPart).Curves
-                //NXOpen.Tag theTag = Tag.Null;
-                //theUfSession.Obj.CycleAll(myCAEPart.Tag, theTag);
-                //do 
-                //{
-                //    log += "Checking new object" + Environment.NewLine;
-
-
-
-                //    if (theTag != Tag.Null)
-                //    {
-                //        NXOpen.TaggedObject myObj = NXOpen.Utilities.NXObjectManager.Get(theTag);
-                //        if (myObj.GetType().ToString() == "NXOpen.Curve")
-                //        {
-                //            log += "CURVE : " + ((NXOpen.Curve)myObj).Name + Environment.NewLine;
-                //        }
-                //        if (myObj.GetType().ToString() == "NXOpen.Line")
-                //        {
-                //            log += "LINE : " + ((NXOpen.Line)myObj).Name + Environment.NewLine;
-                //        }
-                //    }
-                //} while (theTag != Tag.Null);
-
-
-                //// Decide to continue or not
-                //if(!curvesAvail)
-                //{
-                //    log += "      " + myCAEPart.Name + " does not contain any Curve object with Curve_ in its name  (-> SKIPPED)" + Environment.NewLine;
-
-                //    CreatedCurveSelRecipe = false;
-                //    return CreatedCurveSelRecipe;
-                //}
 
 
                 // Create "Get all meshes" Selection Recipe
@@ -2008,11 +1799,6 @@ namespace UCCreator
                 boltConnElement.GenerateElements();
                 log += "      Elements generated" + Environment.NewLine;
 
-                //if (myAFEM.BaseFEModel.AskUpdatePending())
-                //{
-                //    myAFEM.BaseFEModel.UpdateFemodel();
-                //    log += "      FEModel updated");
-                //}
 
                 log += "      REALIZATION =  success" + Environment.NewLine;
             }
@@ -2059,12 +1845,8 @@ namespace UCCreator
             }
 
             // Update AFEM to realize all Universal Bolt Connections
-            //if (myAFEM.BaseFEModel.AskUpdatePending())
-            //{
             myCAEpart.BaseFEModel.UpdateFemodel();
-            //log += "      UPDATED:  " + myCAEpart.Name.ToUpper() + Environment.NewLine;
             log += "      UPDATED:  " + myCAEpart.Name.ToUpper() + Environment.NewLine;
-            //}
         }
 
         #endregion
