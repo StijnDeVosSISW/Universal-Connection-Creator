@@ -1551,10 +1551,22 @@ namespace UCCreator
             otherRecipes:;
                 // Bolt Curve-related Selection Recipes
                 // ------------------------------------
+                // Get all available curves on current object level
+                List<NXOpen.Line> availCurves = GetAllCurveOccurrences(myCAEPart.Tag);
+
+                // Create each curve-related Selection Recipe, for which the corresponding curve is available
                 foreach (MODELS.BoltDefinition boltDefinition in allBoltDefinitions)
                 {
                     // Get target name
                     targSelRecipeName = boltDefinition.Name + " Curves";
+                    string targCurveName = "Curve_" + boltDefinition.Name;
+
+                    // Check if target Curve is available at this object level
+                    if (!availCurves.Select(x => x.Name.ToUpper()).Contains(targCurveName.ToUpper()))
+                    {
+                        log += "      Target Curve (" + targCurveName + ") is not present at this object level  --> skipped (unavailable)" + Environment.NewLine;
+                        continue;
+                    }
 
                     // Check if not existing yet
                     if (myCAEPart.SelectionRecipes.ToArray().Select(x=>x.Name.ToUpper()).Contains(targSelRecipeName.ToUpper()))
@@ -1571,7 +1583,7 @@ namespace UCCreator
                         false,
                         (NXOpen.CAE.CaeSetGroupFilterType)(-1));
 
-                    myAttributeSelRecipe.SetUserAttributes(true, "Curve_" + boltDefinition.Name, false, 0, new string[0], new NXObject.AttributeInformation[0], new NXObject.AttributeInformation[0]);
+                    myAttributeSelRecipe.SetUserAttributes(true, targCurveName, false, 0, new string[0], new NXObject.AttributeInformation[0], new NXObject.AttributeInformation[0]);
 
                     //log += "   Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> created" + Environment.NewLine;
 
@@ -1849,6 +1861,40 @@ namespace UCCreator
             log += "      UPDATED:  " + myCAEpart.Name.ToUpper() + Environment.NewLine;
         }
 
+
+        /// <summary>
+        /// Gets all Occurrences of type NXOpen.Line (representing a Curve, for example) contained in a target object
+        /// </summary>
+        /// <param name="targObjTag">Target object's Tag</param>
+        /// <returns>All Occurrences of type NXOpen.Line</returns>
+        private static List<NXOpen.Line> GetAllCurveOccurrences(NXOpen.Tag targObjTag)
+        {
+            // Initializations
+            List<NXOpen.Line> allCurveOccurrences = new List<Line>();
+            NXOpen.Tag nextTag = NXOpen.Tag.Null;
+            NXOpen.NXObject obj = null;
+
+            // Cycle through all objects of target object
+            do
+            {
+                // Get next object's Tag
+                nextTag = theUfSession.Obj.CycleAll(targObjTag, nextTag);
+                if (nextTag == NXOpen.Tag.Null) { break; }
+
+                // Get next object
+                obj = (NXOpen.NXObject)NXOpen.Utilities.NXObjectManager.Get(nextTag);
+
+                // Check if object is an occurrence and if it is a line object
+                if (obj.IsOccurrence && obj.GetType().ToString() == "NXOpen.Line")
+                {
+                    //WriteToLog("LINE OCC FOUND:  " + obj.Name + "  (Prototype name = " + obj.Prototype.Name + ")");
+                    allCurveOccurrences.Add((NXOpen.Line)obj);
+                }
+            } while (true);
+
+            // Return result
+            return allCurveOccurrences;
+        }
         #endregion
     }
 }
