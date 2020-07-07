@@ -1751,13 +1751,21 @@ namespace UCCreator
                 // Get next object
                 obj = (NXOpen.NXObject)NXOpen.Utilities.NXObjectManager.Get(nextTag);
 
-                // Check if object is an occurrence and if it is a line object
-                if (obj.IsOccurrence && obj.GetType().ToString() == "NXOpen.Line")
+                // Check if object is a line object
+                //if (obj.IsOccurrence && obj.GetType().ToString() == "NXOpen.Line")
+                if (obj.GetType().ToString() == "NXOpen.Line")
                 {
                     //WriteToLog("LINE OCC FOUND:  " + obj.Name + "  (Prototype name = " + obj.Prototype.Name + ")");
                     allCurveOccurrences.Add((NXOpen.Line)obj);
                 }
             } while (true);
+
+            //// Print out available curves in log
+            //log += "      Available curves:" + Environment.NewLine;
+            //foreach (NXOpen.Line line in allCurveOccurrences)
+            //{
+            //    log += "         " + line.Name;
+            //}
 
             // Return result
             return allCurveOccurrences;
