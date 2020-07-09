@@ -1514,6 +1514,12 @@ namespace UCCreator
                 List<string> existingUnivConnNames = isAFEM 
                     ? myAFEM.BaseFEModel.ConnectionsContainer.GetAllConnections().Select(x => x.Name).ToList()
                     : myFEM.BaseFEModel.ConnectionsContainer.GetAllConnections().Select(x => x.Name).ToList();
+
+
+                foreach (string connName in existingUnivConnNames)
+                {
+                    log += "Existing Connection:  " + connName + Environment.NewLine;
+                }
                 
                 // Loop through all predefined Bolt Definitions
                 foreach (MODELS.BoltDefinition boltDefinition in allBoltDefinitions)
@@ -1521,14 +1527,23 @@ namespace UCCreator
                     try
                     {
                         // Check if not existing yet
-                        if (existingUnivConnNames.Contains(boltDefinition.Name.ToUpper()))
+                        if (existingUnivConnNames.Contains(boltDefinition.Name))
                         {
                             // Delete existing Bolt Connection, to make sure:
                             // - it can be adapted if the desired properties are different
                             // - it can be re-generated, but only if the related Selection Recipe has entities in it
-                            theSession.UpdateManager.AddObjectsToDeleteList(new TaggedObject[] {
-                                myAFEM.BaseFEModel.ConnectionsContainer.GetAllConnections().ToList().Single(x => x.Name == boltDefinition.Name)
-                            });
+                            NXOpen.CAE.Connections.IConnection connToDelete = null;
+                            if (isAFEM)
+                            {
+                                connToDelete = myAFEM.BaseFEModel.ConnectionsContainer.GetAllConnections().ToList().Single(x => x.Name == boltDefinition.Name);
+                            }
+                            else
+                            {
+                                log += "TRYING TO DELETE EXISTING BOLT CONNECTION" + Environment.NewLine;
+                                connToDelete = myFEM.BaseFEModel.ConnectionsContainer.GetAllConnections().ToList().Single(x => x.Name == boltDefinition.Name);
+                            }
+
+                            theSession.UpdateManager.AddObjectsToDeleteList(new TaggedObject[] { connToDelete });
                             theSession.UpdateManager.DoUpdate(new Session.UndoMarkId());
                             //continue;
 
