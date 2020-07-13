@@ -71,10 +71,14 @@ namespace UCCreator
         private static bool ProcessAll = true;
         private static NXOpen.BasePart currWork = null;
 
+        private enum CurveSearchingMethod { SelectionRecipe, LineOccurrence};
+        private static CurveSearchingMethod targCurveSearching;
+
         // Diagnostic variables
         private static System.Diagnostics.Stopwatch myStopwatch = null;
         private List<double> ExecutionTimes = new List<double>();
         private static string log = "";
+        private static string baseMsg = "";
 
         //------------------------------------------------------------------------------
         //Constructor for NX Styler class
@@ -93,6 +97,9 @@ namespace UCCreator
                 TargEnv targEnv = TargEnv.Production;
                 //TargEnv targEnv = TargEnv.Debug;
                 //TargEnv targEnv = TargEnv.Siemens;
+
+                // Set Curve Searching method
+                targCurveSearching = CurveSearchingMethod.LineOccurrence;
 
                 switch (targEnv)
                 {
@@ -693,7 +700,7 @@ namespace UCCreator
         /// Writes the defined message in the NX status bar (at the bottom)
         /// </summary>
         /// <param name="msg"></param>
-        private void SetNXstatusMessage(string msg)
+        private static void SetNXstatusMessage(string msg)
         {
             //theUfSession.Ui.SetStatus(msg);
             theUfSession.Ui.SetPrompt("ABC CREATOR | " + msg);
@@ -1131,8 +1138,9 @@ namespace UCCreator
                     // Initializations
                     List<double> DetailExecutionTimes = new List<double>() { 0, 0, 0, 0 };
 
-                    SetNXstatusMessage("Processing unique (A)FEM objects :   " + i.ToString() + @"/" + tot.ToString() + "  (" + Math.Round(((double)i / tot) * 100) + "%)    " +
-                        "[" + targObj.Name + "]");
+                    baseMsg = "Processing unique (A)FEM objects :   " + i.ToString() + @"/" + tot.ToString() + "  (" + Math.Round(((double)i / tot) * 100) + "%)    " +
+                        "[" + targObj.Name + "]";
+                    SetNXstatusMessage(baseMsg);
 
                     log += Environment.NewLine +
                         "=================================================================================" + Environment.NewLine +
@@ -1149,6 +1157,13 @@ namespace UCCreator
                     if (isFEM && ProcessAll)
                     {
                         log += "---> Current run is processing Assembly FEM levels only:   SKIPPED" + Environment.NewLine;
+                        continue;
+                    }
+
+                    // Check if target object has any curves at all for Bolt connections
+                    if (!GetAllCurveOccurrences(targObj.Tag).Any(x => x.Name.Contains("CURVE_")))
+                    {
+                        log += "---> Object does not contain any curve with CURVE_ in its name:  SKIPPED" + Environment.NewLine;
                         continue;
                     }
 
@@ -1187,28 +1202,27 @@ namespace UCCreator
                     DetailExecutionTimes[1] = detailStopwatch.Elapsed.TotalSeconds;
 
 
-                    if (SelRecipesHaveCurves)
+                    // CREATE UNIVERSAL BOLT CONNECTION DEFINITIONS
+                    // --------------------------------------------
+                    detailStopwatch.Restart();
+
+                    if (isFEM)
                     {
-                        // CREATE UNIVERSAL BOLT CONNECTION DEFINITIONS
-                        // --------------------------------------------
-                        detailStopwatch.Restart();
-
-                        if (isFEM)
-                        {
-                            CreateUniversalBoltConnections(null, (NXOpen.CAE.FemPart)targObj);
-                        }
-                        else
-                        {
-                            CreateUniversalBoltConnections((NXOpen.CAE.AssyFemPart)targObj, null);
-                        }
-
-                        detailStopwatch.Stop();
-                        DetailExecutionTimes[2] = detailStopwatch.Elapsed.TotalSeconds;
-
-                        // UPDATE BOLT CONNECTIONS     ---> Moved to end
-                        // -----------------------
-                        objectsToUpdate.Add(targObj);
+                        CreateUniversalBoltConnections(null, (NXOpen.CAE.FemPart)targObj);
                     }
+                    else
+                    {
+                        CreateUniversalBoltConnections((NXOpen.CAE.AssyFemPart)targObj, null);
+                    }
+
+                    detailStopwatch.Stop();
+                    DetailExecutionTimes[2] = detailStopwatch.Elapsed.TotalSeconds;
+
+
+                    // UPDATE BOLT CONNECTIONS     ---> Moved to end
+                    // -----------------------
+                    objectsToUpdate.Add(targObj);
+
 
                     // Diagnostics
                     log += Environment.NewLine +
@@ -1431,62 +1445,66 @@ namespace UCCreator
                 log += "      Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> CREATED" + Environment.NewLine;
 
             otherRecipes:;
-                // Bolt Curve-related Selection Recipes
-                // ------------------------------------
-                // Get all available curves on current object level
-                List<NXOpen.Line> availCurves = GetAllCurveOccurrences(myCAEPart.Tag);
 
-                // Create each curve-related Selection Recipe, for which the corresponding curve is available
-                foreach (MODELS.BoltDefinition boltDefinition in allBoltDefinitions)
+                if (targCurveSearching == CurveSearchingMethod.SelectionRecipe)
                 {
-                    // Get target name
-                    targSelRecipeName = boltDefinition.Name + " Curves";
-                    string targCurveName = "Curve_" + boltDefinition.Name;
+                    // Bolt Curve-related Selection Recipes
+                    // ------------------------------------
+                    // Get all available curves on current object level
+                    List<NXOpen.Line> availCurves = GetAllCurveOccurrences(myCAEPart.Tag);
 
-                    // Check if target Curve is available at this object level
-                    if (!availCurves.Select(x => x.Name.ToUpper()).Contains(targCurveName.ToUpper()))
+                    // Create each curve-related Selection Recipe, for which the corresponding curve is available
+                    foreach (MODELS.BoltDefinition boltDefinition in allBoltDefinitions)
                     {
-                        log += "      Target Curve (" + targCurveName + ") is not present at this object level  --> skipped (unavailable)" + Environment.NewLine;
-                        continue;
+                        // Get target name
+                        targSelRecipeName = boltDefinition.Name + " Curves";
+                        string targCurveName = "Curve_" + boltDefinition.Name;
+
+                        // Check if target Curve is available at this object level
+                        if (!availCurves.Select(x => x.Name.ToUpper()).Contains(targCurveName.ToUpper()))
+                        {
+                            log += "      Target Curve (" + targCurveName + ") is not present at this object level  --> skipped (unavailable)" + Environment.NewLine;
+                            continue;
+                        }
+
+                        // Check if not existing yet
+                        if (myCAEPart.SelectionRecipes.ToArray().Select(x => x.Name.ToUpper()).Contains(targSelRecipeName.ToUpper()))
+                        {
+                            log += "      Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> skipped (exists)" + Environment.NewLine;
+                            CreatedCurveSelRecipe = true;
+                            continue;
+                        }
+
+                        // Create Seletion Recipe (NX12)
+                        NXOpen.CAE.AttributeSelectionRecipe myAttributeSelRecipe = myCAEPart.SelectionRecipes.CreateAttributeRecipe(
+                            targSelRecipeName,
+                            NXOpen.CAE.CaeSetGroupFilterType.GeomCurve,
+                            false,
+                            (NXOpen.CAE.CaeSetGroupFilterType)(-1));
+
+                        myAttributeSelRecipe.SetUserAttributes(true, targCurveName, false, 0, new string[0], new NXObject.AttributeInformation[0], new NXObject.AttributeInformation[0]);
+
+                        //log += "   Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> created" + Environment.NewLine;
+
+                        // If Selection Recipe contains 0 entities, mark for deleting
+                        if (myAttributeSelRecipe.GetEntities().Length == 0)
+                        {
+                            theSession.UpdateManager.AddObjectsToDeleteList(new TaggedObject[] { myAttributeSelRecipe });
+                            log += "      Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> skipped (0 entities)" + Environment.NewLine;
+                        }
+                        else
+                        {
+                            log += "      Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> created (" + myAttributeSelRecipe.GetEntities().Length.ToString() + " entities)" + Environment.NewLine;
+                            CreatedCurveSelRecipe = true;
+                        }
+
+                        //nextBoltDef:;
                     }
 
-                    // Check if not existing yet
-                    if (myCAEPart.SelectionRecipes.ToArray().Select(x=>x.Name.ToUpper()).Contains(targSelRecipeName.ToUpper()))
-                    {
-                        log += "      Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> skipped (exists)" + Environment.NewLine;
-                        CreatedCurveSelRecipe = true;
-                        continue;
-                    }
-
-                    // Create Seletion Recipe (NX12)
-                    NXOpen.CAE.AttributeSelectionRecipe myAttributeSelRecipe = myCAEPart.SelectionRecipes.CreateAttributeRecipe(
-                        targSelRecipeName,
-                        NXOpen.CAE.CaeSetGroupFilterType.GeomCurve,
-                        false,
-                        (NXOpen.CAE.CaeSetGroupFilterType)(-1));
-
-                    myAttributeSelRecipe.SetUserAttributes(true, targCurveName, false, 0, new string[0], new NXObject.AttributeInformation[0], new NXObject.AttributeInformation[0]);
-
-                    //log += "   Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> created" + Environment.NewLine;
-
-                    // If Selection Recipe contains 0 entities, mark for deleting
-                    if (myAttributeSelRecipe.GetEntities().Length == 0)
-                    {
-                        theSession.UpdateManager.AddObjectsToDeleteList(new TaggedObject[] { myAttributeSelRecipe });
-                        log += "      Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> skipped (0 entities)" + Environment.NewLine;
-                    }
-                    else
-                    {
-                        log += "      Selection Recipe:  " + targSelRecipeName.ToUpper() + "  --> created (" + myAttributeSelRecipe.GetEntities().Length.ToString() + " entities)" + Environment.NewLine;
-                        CreatedCurveSelRecipe = true;
-                    }
-
-                //nextBoltDef:;
+                    // Delete all empty Selection Recipes
+                    theSession.UpdateManager.DoUpdate(new Session.UndoMarkId());
+                    log += "      Deleted all skipped Selection Recipes again" + Environment.NewLine;
                 }
-
-                // Delete all empty Selection Recipes
-                theSession.UpdateManager.DoUpdate(new Session.UndoMarkId());
-                log += "      Deleted all skipped Selection Recipes again" + Environment.NewLine;
             }
             catch (Exception e)
             {
@@ -1506,8 +1524,21 @@ namespace UCCreator
         {
             try
             {
-                log += Environment.NewLine +
-                "   CREATE UNIVERSAL BOLT CONNECTIONS" + Environment.NewLine + Environment.NewLine;
+                switch (targCurveSearching)
+                {
+                    case CurveSearchingMethod.SelectionRecipe:
+                        log += Environment.NewLine +
+                        "   CREATE UNIVERSAL BOLT CONNECTIONS      [SELECTION RECIPE BASED]" + Environment.NewLine + Environment.NewLine;
+                        break;
+                    case CurveSearchingMethod.LineOccurrence:
+                        log += Environment.NewLine +
+                        "   CREATE UNIVERSAL BOLT CONNECTIONS      [LINE OCCURRENCE BASED]" + Environment.NewLine + Environment.NewLine;
+                        break;
+
+                    default:
+                        break;
+                }
+                
 
                 // Check whether input is an AFEM or not
                 bool isAFEM = myAFEM != null ? true : false;
@@ -1553,13 +1584,13 @@ namespace UCCreator
                             // - it can be re-generated, but only if the related Selection Recipe has entities in it
                             NXOpen.CAE.Connections.IConnection connToDelete = null;
 
+                            log += "TRYING TO DELETE EXISTING BOLT CONNECTION" + Environment.NewLine;
                             if (isAFEM)
                             {
                                 connToDelete = myAFEM.BaseFEModel.ConnectionsContainer.GetAllConnections().ToList().Single(x => x.Name == boltDefinition.Name);
                             }
                             else
                             {
-                                log += "TRYING TO DELETE EXISTING BOLT CONNECTION" + Environment.NewLine;
                                 connToDelete = myFEM.BaseFEModel.ConnectionsContainer.GetAllConnections().ToList().Single(x => x.Name == boltDefinition.Name);
                             }
 
@@ -1575,33 +1606,61 @@ namespace UCCreator
                         }
 
 
-                        // Check if target Selection Recipe exists and contains any Curves at all
-                        // ----------------------------------------------------------------------
+                        // GET ALL TARGET CURVES
+                        // ---------------------
+                        // Initializations
                         NXOpen.CAE.SelectionRecipe targSelRecipe = null;
+                        List<NXOpen.Line> targCurvesAsLine = new List<Line>();
 
-                        try
+                        // Get curves
+                        switch (targCurveSearching)
                         {
-                            targSelRecipe = targCAEPart.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper().Contains(boltDefinition.Name.ToUpper()) && !x.Name.ToLower().Contains("unique"));
-                            //targSelRecipe = isAFEM
-                            //    ? myAFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper().Contains(boltDefinition.Name.ToUpper()) && !x.Name.ToLower().Contains("unique"))
-                            //    : myFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper().Contains(boltDefinition.Name.ToUpper()) && !x.Name.ToLower().Contains("unique"));
-                        }
-                        catch (Exception e)
-                        {
-                            log += "         Related Selection Recipe not found --> skipped" + Environment.NewLine;
-                            continue;
-                        }
+                            // SELECTION RECIPE BASED:
+                            case CurveSearchingMethod.SelectionRecipe:
+                                // Check if target Selection Recipe exists and contains any Curves at all
+                                // ----------------------------------------------------------------------
+                                try
+                                {
+                                    targSelRecipe = targCAEPart.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper().Contains(boltDefinition.Name.ToUpper()) && !x.Name.ToLower().Contains("unique"));
+                                }
+                                catch (Exception e)
+                                {
+                                    log += "         Related Selection Recipe not found --> skipped" + Environment.NewLine;
+                                    continue;
+                                }
 
-                        if (targSelRecipe.GetEntities().Length == 0)
-                        {
-                            log += "         Related Selection Recipe (" + targSelRecipe.Name + ") :  " + targSelRecipe.GetEntities().Length.ToString() + " entitities " +
-                                "--> skipped" + Environment.NewLine;
-                            continue;
+                                if (targSelRecipe.GetEntities().Length == 0)
+                                {
+                                    log += "         Related Selection Recipe (" + targSelRecipe.Name + ") :  " + targSelRecipe.GetEntities().Length.ToString() + " entitities " +
+                                        "--> skipped" + Environment.NewLine;
+                                    continue;
+                                }
+                                else
+                                {
+                                    log += "         Related Selection Recipe (" + targSelRecipe.Name + ") :  " + targSelRecipe.GetEntities().Length.ToString() + " entitities " + Environment.NewLine;
+                                }
+                                break;
+
+                            // LINE OCCURRENCE BASED:
+                            case CurveSearchingMethod.LineOccurrence:
+                                string targCurveName = "CURVE_" + boltDefinition.Name;
+                                targCurvesAsLine = GetAllCurveOccurrences(targCAEPart.Tag).Where(x => x.Name.ToUpper() == targCurveName.ToUpper()).ToList();
+
+                                if (targCurvesAsLine.Count > 0)
+                                {
+                                    log += "         Target Line objects (" + targCurveName + ") :  " + targCurvesAsLine.Count.ToString() + " entitities " + Environment.NewLine;
+                                }
+                                else
+                                {
+                                    log += "         Target Line objects (" + targCurveName + ") :  NONE FOUND --> skipped" + Environment.NewLine;
+                                    continue;
+                                }
+                                break;
+
+                            default:
+                                break;
                         }
-                        else
-                        {
-                            log += "         Related Selection Recipe (" + targSelRecipe.Name + ") :  " + targSelRecipe.GetEntities().Length.ToString() + " entitities " + Environment.NewLine;
-                        }
+                        
 
                         // Create Universal Bolt Connection definition (NX12)
                         // --------------------------------------------------
@@ -1616,31 +1675,36 @@ namespace UCCreator
                         // Set Targets (Flanges)
                         newBoltConn.AddFlangeEntities(0, targCAEPart.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper() == "GET ALL MESHES").GetEntities());
                         log += "         Targets         : " + targCAEPart.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper() == "GET ALL MESHES").Name + " (Selection Recipe)" + Environment.NewLine;
-                        //if (isAFEM) 
-                        //{
-                        //    newBoltConn.AddFlangeEntities(0, myAFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper() == "GET ALL MESHES").GetEntities());
-                        //    log += "         Targets         : " + myAFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper() == "GET ALL MESHES").Name + " (Selection Recipe)" + Environment.NewLine;
-                        //}
-                        //else 
-                        //{
-                        //    newBoltConn.AddFlangeEntities(0, myFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper() == "GET ALL MESHES").GetEntities());
-                        //    log += "         Targets         : " + myFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper() == "GET ALL MESHES").Name + " (Selection Recipe)" + Environment.NewLine;
-                        //}
-                        
+
 
                         // Set Locations
-                        //newBoltConn.AddLocationSelectionRecipe(0, targSelRecipe);
-                        //log += "         Locations       : " + targSelRecipe.Name + " (Selection Recipe)" + Environment.NewLine;
-                        foreach (NXOpen.TaggedObject curveObj in targSelRecipe.GetEntities())
+                        switch (targCurveSearching)
                         {
-                            NXOpen.Line curveAsLine = (NXOpen.Line)curveObj;
-                            newBoltConn.AddLocationCoordinatesWithDirectionCoordinates(
-                                0,
-                                targCAEPart.Points.CreatePoint(curveAsLine.StartPoint),
-                                targCAEPart.Points.CreatePoint(curveAsLine.EndPoint));
-                        }
-                        log += "         Locations       : " + targSelRecipe.Name + " (Selection Recipe)  --> added via Coordinates with Direction Coordinates method" + Environment.NewLine;
+                            case CurveSearchingMethod.SelectionRecipe:
+                                newBoltConn.AddLocationSelectionRecipe(0, targSelRecipe);
+                                log += "         Locations       : " + targSelRecipe.Name + " (Selection Recipe based)" + Environment.NewLine;
+                                break;
 
+                            case CurveSearchingMethod.LineOccurrence:
+                                int k = 0;
+                                foreach (NXOpen.Line curveAsLine in targCurvesAsLine)
+                                {
+                                    newBoltConn.AddLocationCoordinatesWithDirectionCoordinates(
+                                        0,
+                                        targCAEPart.Points.CreatePoint(curveAsLine.StartPoint),
+                                        targCAEPart.Points.CreatePoint(curveAsLine.EndPoint));
+
+                                    k++;
+                                    SetNXstatusMessage(baseMsg + " | Bolt Def:  " + boltDefinition.Name + "   | Setting Locations:  " + k.ToString() + @"/" + targCurvesAsLine.Count.ToString() + " added...");
+                                }
+                                log += "         Locations       : " + "CURVE_" + boltDefinition.Name + " (Line Occurrence based)  --> added via Coordinates with Direction Coordinates method" + Environment.NewLine;
+                                break;
+
+                            default:
+                                break;
+                        }
+                        
+                        
                         // Set Physicals
                         newBoltConn.DiameterType = NXOpen.CAE.Connections.DiameterType.User;
                         newBoltConn.Diameter.Value = boltDefinition.ShankDiam;
@@ -1655,43 +1719,27 @@ namespace UCCreator
                         // Set Material
                         NXOpen.PhysicalMaterial targMaterial = null;
                         bool isPhysicalMaterial = targCAEPart.MaterialManager.PhysicalMaterials.ToArray().Select(x => x.Name).Contains(boltDefinition.MaterialName);
-                        //bool isPhysicalMaterial = isAFEM
-                        //    ? myAFEM.MaterialManager.PhysicalMaterials.ToArray().Select(x => x.Name).Contains(boltDefinition.MaterialName)
-                        //    : myFEM.MaterialManager.PhysicalMaterials.ToArray().Select(x => x.Name).Contains(boltDefinition.MaterialName);
-                        
 
                         if (isPhysicalMaterial)
                         {
-                            //targMaterial = isAFEM
-                            //    ? (NXOpen.PhysicalMaterial)myAFEM.MaterialManager.PhysicalMaterials.ToArray().Single(x => x.Name.ToUpper() == boltDefinition.MaterialName.ToUpper())
-                            //    : (NXOpen.PhysicalMaterial)myFEM.MaterialManager.PhysicalMaterials.ToArray().Single(x => x.Name.ToUpper() == boltDefinition.MaterialName.ToUpper());
                             targMaterial = (NXOpen.PhysicalMaterial)targCAEPart.MaterialManager.PhysicalMaterials.ToArray().Single(x => x.Name.ToUpper() == boltDefinition.MaterialName.ToUpper());
                         }
                         else
                         {
                             try
                             {
-                                //targMaterial = isAFEM
-                                //    ? myAFEM.MaterialManager.PhysicalMaterials.LoadFromNxmatmllibrary(boltDefinition.MaterialName)
-                                //    : myFEM.MaterialManager.PhysicalMaterials.LoadFromNxmatmllibrary(boltDefinition.MaterialName);
                                 targMaterial = targCAEPart.MaterialManager.PhysicalMaterials.LoadFromNxmatmllibrary(boltDefinition.MaterialName);
                                 goto matfound;
                             }
                             catch (Exception) { }
                             try
                             {
-                                //targMaterial = isAFEM
-                                //    ? myAFEM.MaterialManager.PhysicalMaterials.LoadFromLegacynxlibrary(boltDefinition.MaterialName)
-                                //    : myFEM.MaterialManager.PhysicalMaterials.LoadFromLegacynxlibrary(boltDefinition.MaterialName);
                                 targMaterial = targCAEPart.MaterialManager.PhysicalMaterials.LoadFromLegacynxlibrary(boltDefinition.MaterialName);
                                 goto matfound;
                             }
                             catch (Exception) { }
                             try
                             {
-                                //targMaterial = isAFEM
-                                //    ? myAFEM.MaterialManager.PhysicalMaterials.LoadFromNxlibrary(boltDefinition.MaterialName)
-                                //    : myFEM.MaterialManager.PhysicalMaterials.LoadFromNxlibrary(boltDefinition.MaterialName);
                                 targMaterial = targCAEPart.MaterialManager.PhysicalMaterials.LoadFromNxlibrary(boltDefinition.MaterialName);
                                 goto matfound;
                             }
@@ -1723,6 +1771,7 @@ namespace UCCreator
                 // -----------------------------------------------------
                 log += Environment.NewLine +
                     "   REALIZE UNIVERSAL BOLT CONNECTIONS" + Environment.NewLine + Environment.NewLine;
+                SetNXstatusMessage(baseMsg + "   | Realizing all bolt connections' 1D elements...");
 
                 NXOpen.CAE.Connections.Element boltConnElement = isAFEM
                     ? myAFEM.BaseFEModel.ConnectionElementCollection.Create(NXOpen.CAE.Connections.ElementType.E1DSpider, "Element - BOLT DEFINITIONS", newBoltConnections.ToArray())
