@@ -1,4 +1,19 @@
-﻿using System;
+﻿//=================================================================================
+//        
+//        UNIVERSAL CONNECTION CREATOR
+//        
+//        Description:
+//        ------------
+//        NXOpen application that creates pre-defined Universal Bolt Connections, 
+//        based on the presence of dedicated Curve objects representing the bolts.
+//
+//        Created by: Stijn De Vos (stijn.de_vos@siemens.com)
+//              Version: NX 12.0.2
+//              Date: 07-13-2020  (Format: mm-dd-yyyy)
+//
+//=================================================================================
+
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -1499,6 +1514,10 @@ namespace UCCreator
 
                 NXOpen.Tag workObjTag = theSession.Parts.BaseWork.Tag;
 
+                NXOpen.CAE.CaePart targCAEPart = null;
+                if (isAFEM) { targCAEPart = (NXOpen.CAE.CaePart)myAFEM; }
+                else { targCAEPart = (NXOpen.CAE.CaePart)myFEM; }
+
                 // Set target AFEM to working
                 // --------------------------
                 if (isAFEM) { if (workObjTag != myAFEM.Tag) { theSession.Parts.SetWork((NXOpen.BasePart)myAFEM); } }
@@ -1533,6 +1552,7 @@ namespace UCCreator
                             // - it can be adapted if the desired properties are different
                             // - it can be re-generated, but only if the related Selection Recipe has entities in it
                             NXOpen.CAE.Connections.IConnection connToDelete = null;
+
                             if (isAFEM)
                             {
                                 connToDelete = myAFEM.BaseFEModel.ConnectionsContainer.GetAllConnections().ToList().Single(x => x.Name == boltDefinition.Name);
@@ -1561,9 +1581,10 @@ namespace UCCreator
 
                         try
                         {
-                            targSelRecipe = isAFEM
-                                ? myAFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper().Contains(boltDefinition.Name.ToUpper()) && !x.Name.ToLower().Contains("unique"))
-                                : myFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper().Contains(boltDefinition.Name.ToUpper()) && !x.Name.ToLower().Contains("unique"));
+                            targSelRecipe = targCAEPart.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper().Contains(boltDefinition.Name.ToUpper()) && !x.Name.ToLower().Contains("unique"));
+                            //targSelRecipe = isAFEM
+                            //    ? myAFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper().Contains(boltDefinition.Name.ToUpper()) && !x.Name.ToLower().Contains("unique"))
+                            //    : myFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper().Contains(boltDefinition.Name.ToUpper()) && !x.Name.ToLower().Contains("unique"));
                         }
                         catch (Exception e)
                         {
@@ -1593,21 +1614,32 @@ namespace UCCreator
                         log += "         Name            : " + boltDefinition.Name + Environment.NewLine;
 
                         // Set Targets (Flanges)
-                        if (isAFEM) 
-                        {
-                            newBoltConn.AddFlangeEntities(0, myAFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper() == "GET ALL MESHES").GetEntities());
-                            log += "         Targets         : " + myAFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper() == "GET ALL MESHES").Name + " (Selection Recipe)" + Environment.NewLine;
-                        }
-                        else 
-                        {
-                            newBoltConn.AddFlangeEntities(0, myFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper() == "GET ALL MESHES").GetEntities());
-                            log += "         Targets         : " + myFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper() == "GET ALL MESHES").Name + " (Selection Recipe)" + Environment.NewLine;
-                        }
+                        newBoltConn.AddFlangeEntities(0, targCAEPart.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper() == "GET ALL MESHES").GetEntities());
+                        log += "         Targets         : " + targCAEPart.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper() == "GET ALL MESHES").Name + " (Selection Recipe)" + Environment.NewLine;
+                        //if (isAFEM) 
+                        //{
+                        //    newBoltConn.AddFlangeEntities(0, myAFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper() == "GET ALL MESHES").GetEntities());
+                        //    log += "         Targets         : " + myAFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper() == "GET ALL MESHES").Name + " (Selection Recipe)" + Environment.NewLine;
+                        //}
+                        //else 
+                        //{
+                        //    newBoltConn.AddFlangeEntities(0, myFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper() == "GET ALL MESHES").GetEntities());
+                        //    log += "         Targets         : " + myFEM.SelectionRecipes.ToArray().Single(x => x.Name.ToUpper() == "GET ALL MESHES").Name + " (Selection Recipe)" + Environment.NewLine;
+                        //}
                         
 
                         // Set Locations
-                        newBoltConn.AddLocationSelectionRecipe(0, targSelRecipe);
-                        log += "         Locations       : " + targSelRecipe.Name + " (Selection Recipe)" + Environment.NewLine;
+                        //newBoltConn.AddLocationSelectionRecipe(0, targSelRecipe);
+                        //log += "         Locations       : " + targSelRecipe.Name + " (Selection Recipe)" + Environment.NewLine;
+                        foreach (NXOpen.TaggedObject curveObj in targSelRecipe.GetEntities())
+                        {
+                            NXOpen.Line curveAsLine = (NXOpen.Line)curveObj;
+                            newBoltConn.AddLocationCoordinatesWithDirectionCoordinates(
+                                0,
+                                targCAEPart.Points.CreatePoint(curveAsLine.StartPoint),
+                                targCAEPart.Points.CreatePoint(curveAsLine.EndPoint));
+                        }
+                        log += "         Locations       : " + targSelRecipe.Name + " (Selection Recipe)  --> added via Coordinates with Direction Coordinates method" + Environment.NewLine;
 
                         // Set Physicals
                         newBoltConn.DiameterType = NXOpen.CAE.Connections.DiameterType.User;
@@ -1622,39 +1654,45 @@ namespace UCCreator
 
                         // Set Material
                         NXOpen.PhysicalMaterial targMaterial = null;
-                        bool isPhysicalMaterial = isAFEM
-                            ? myAFEM.MaterialManager.PhysicalMaterials.ToArray().Select(x => x.Name).Contains(boltDefinition.MaterialName)
-                            : myFEM.MaterialManager.PhysicalMaterials.ToArray().Select(x => x.Name).Contains(boltDefinition.MaterialName);
+                        bool isPhysicalMaterial = targCAEPart.MaterialManager.PhysicalMaterials.ToArray().Select(x => x.Name).Contains(boltDefinition.MaterialName);
+                        //bool isPhysicalMaterial = isAFEM
+                        //    ? myAFEM.MaterialManager.PhysicalMaterials.ToArray().Select(x => x.Name).Contains(boltDefinition.MaterialName)
+                        //    : myFEM.MaterialManager.PhysicalMaterials.ToArray().Select(x => x.Name).Contains(boltDefinition.MaterialName);
                         
+
                         if (isPhysicalMaterial)
                         {
-                            targMaterial = isAFEM
-                                ? (NXOpen.PhysicalMaterial)myAFEM.MaterialManager.PhysicalMaterials.ToArray().Single(x => x.Name.ToUpper() == boltDefinition.MaterialName.ToUpper())
-                                : (NXOpen.PhysicalMaterial)myFEM.MaterialManager.PhysicalMaterials.ToArray().Single(x => x.Name.ToUpper() == boltDefinition.MaterialName.ToUpper());
+                            //targMaterial = isAFEM
+                            //    ? (NXOpen.PhysicalMaterial)myAFEM.MaterialManager.PhysicalMaterials.ToArray().Single(x => x.Name.ToUpper() == boltDefinition.MaterialName.ToUpper())
+                            //    : (NXOpen.PhysicalMaterial)myFEM.MaterialManager.PhysicalMaterials.ToArray().Single(x => x.Name.ToUpper() == boltDefinition.MaterialName.ToUpper());
+                            targMaterial = (NXOpen.PhysicalMaterial)targCAEPart.MaterialManager.PhysicalMaterials.ToArray().Single(x => x.Name.ToUpper() == boltDefinition.MaterialName.ToUpper());
                         }
                         else
                         {
                             try
                             {
-                                targMaterial = isAFEM
-                                    ? myAFEM.MaterialManager.PhysicalMaterials.LoadFromNxmatmllibrary(boltDefinition.MaterialName)
-                                    : myFEM.MaterialManager.PhysicalMaterials.LoadFromNxmatmllibrary(boltDefinition.MaterialName);
+                                //targMaterial = isAFEM
+                                //    ? myAFEM.MaterialManager.PhysicalMaterials.LoadFromNxmatmllibrary(boltDefinition.MaterialName)
+                                //    : myFEM.MaterialManager.PhysicalMaterials.LoadFromNxmatmllibrary(boltDefinition.MaterialName);
+                                targMaterial = targCAEPart.MaterialManager.PhysicalMaterials.LoadFromNxmatmllibrary(boltDefinition.MaterialName);
                                 goto matfound;
                             }
                             catch (Exception) { }
                             try
                             {
-                                targMaterial = isAFEM
-                                    ? myAFEM.MaterialManager.PhysicalMaterials.LoadFromLegacynxlibrary(boltDefinition.MaterialName)
-                                    : myFEM.MaterialManager.PhysicalMaterials.LoadFromLegacynxlibrary(boltDefinition.MaterialName);
+                                //targMaterial = isAFEM
+                                //    ? myAFEM.MaterialManager.PhysicalMaterials.LoadFromLegacynxlibrary(boltDefinition.MaterialName)
+                                //    : myFEM.MaterialManager.PhysicalMaterials.LoadFromLegacynxlibrary(boltDefinition.MaterialName);
+                                targMaterial = targCAEPart.MaterialManager.PhysicalMaterials.LoadFromLegacynxlibrary(boltDefinition.MaterialName);
                                 goto matfound;
                             }
                             catch (Exception) { }
                             try
                             {
-                                targMaterial = isAFEM
-                                    ? myAFEM.MaterialManager.PhysicalMaterials.LoadFromNxlibrary(boltDefinition.MaterialName)
-                                    : myFEM.MaterialManager.PhysicalMaterials.LoadFromNxlibrary(boltDefinition.MaterialName);
+                                //targMaterial = isAFEM
+                                //    ? myAFEM.MaterialManager.PhysicalMaterials.LoadFromNxlibrary(boltDefinition.MaterialName)
+                                //    : myFEM.MaterialManager.PhysicalMaterials.LoadFromNxlibrary(boltDefinition.MaterialName);
+                                targMaterial = targCAEPart.MaterialManager.PhysicalMaterials.LoadFromNxlibrary(boltDefinition.MaterialName);
                                 goto matfound;
                             }
                             catch (Exception) { }
