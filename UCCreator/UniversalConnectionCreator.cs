@@ -468,7 +468,7 @@ namespace UCCreator
                 {
                     switch (enum0.ValueAsString)
                     {
-                        case "This level and all sub-levels":
+                        case "All assyFEM levels":
                             ProcessAll = true;
                             break;
 
@@ -1048,11 +1048,22 @@ namespace UCCreator
                 currWork = theSession.Parts.BaseWork;
                 log += "Current working object :  " + currWork.ToString() + Environment.NewLine;
 
+                if (ProcessAll)
+                {
+                    log += Environment.NewLine +
+                        "SCENARIO =   ALL ASSYFEM LEVELS" + Environment.NewLine;
+                }
+                else
+                {
+                    log += Environment.NewLine +
+                        "SCENARIO =   THIS LEVEL ONLY" + Environment.NewLine;
+                }
 
                 log += Environment.NewLine +
                     "Getting all FEM and AFEM objects to process..." + Environment.NewLine;
                 SetNXstatusMessage("Getting all FEM and AFEM objects to process...");
 
+                allTargObjects.Clear();
                 switch (theSession.Parts.BaseWork.GetType().ToString())
                 {
                     case "NXOpen.CAE.SimPart":
@@ -1098,17 +1109,19 @@ namespace UCCreator
                 log += "   -> # (A)FEM objects to process = " + allTargObjects.Count.ToString() + Environment.NewLine;
 
 
+
                 // Remove any duplicates from List
                 allTargObjects = allTargObjects.Distinct().ToList();
 
-                log += Environment.NewLine + 
+                log += Environment.NewLine +
                     "Removing duplicates... " + Environment.NewLine +
                      "   -> # (A)FEM objects to process = " + allTargObjects.Count.ToString() + Environment.NewLine;
-                
+
                 foreach (NXObject obj in allTargObjects)
                 {
                     log += "   " + obj.Name.ToUpper() + Environment.NewLine;
                 }
+
 
 
                 myStopwatch.Stop();
