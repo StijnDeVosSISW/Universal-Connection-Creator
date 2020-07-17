@@ -16,9 +16,9 @@ namespace UCCreator.MODELS
 
         // PROPERTIES
         public string Name { get; set; }
-        public int ShankDiam { get; set; }
-        public int HeadDiam { get; set; }
-        public int MaxConnLength { get; set; }
+        public double ShankDiam { get; set; }
+        public double HeadDiam { get; set; }
+        public double MaxConnLength { get; set; }
         public string MaterialName { get; set; }
     }
 }
