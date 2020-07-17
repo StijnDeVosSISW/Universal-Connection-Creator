@@ -1017,9 +1017,9 @@ namespace UCCreator
                     allBoltDefinitions.Add(new MODELS.BoltDefinition()
                     {
                         Name = node.GetColumnDisplayText(0),
-                        ShankDiam = Convert.ToInt32(node.GetColumnDisplayText(1)),
-                        HeadDiam = Convert.ToInt32(node.GetColumnDisplayText(2)),
-                        MaxConnLength = Convert.ToInt32(node.GetColumnDisplayText(3)),
+                        ShankDiam = Convert.ToDouble(node.GetColumnDisplayText(1)),
+                        HeadDiam = Convert.ToDouble(node.GetColumnDisplayText(2)),
+                        MaxConnLength = Convert.ToDouble(node.GetColumnDisplayText(3)),
                         MaterialName = node.GetColumnDisplayText(4)
                     }); ;
 
