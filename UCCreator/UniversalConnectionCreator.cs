@@ -1173,6 +1173,19 @@ namespace UCCreator
                         continue;
                     }
 
+                    // If MONO-FEM scenario (FEM object and Only This Level)
+                    if (isFEM && !ProcessAll)
+                    {
+                        // Initialize
+                        NXOpen.CAE.FemPart myFEM = (NXOpen.CAE.FemPart)targObj;
+
+                        // Replace Reference Set
+                        ReplaceReferenceSet(myFEM);
+
+                        // Make sure Geometry Options are set correctly (so that Curve objects are propagated to the FEM level)
+                        SetFEMGeometryOptions(myFEM);
+                    }
+
                     // Check if target object has any curves at all for Bolt connections
                     if (!GetAllCurveOccurrences(targObj.Tag).Any(x => x.Name.Contains("CURVE_")))
                     {
@@ -1412,7 +1425,7 @@ namespace UCCreator
             try
             {
                 log += Environment.NewLine +
-                "   CREATE SELECTION RECIPES" + Environment.NewLine + Environment.NewLine;
+                "   CREATE SELECTION RECIPES" + Environment.NewLine;
 
                 // Set Working, if needed
                 if (theSession.Parts.BaseWork.Tag != myCAEPart.Tag) { theSession.Parts.SetWork((NXOpen.BasePart)myCAEPart); }
@@ -1541,11 +1554,11 @@ namespace UCCreator
                 {
                     case CurveSearchingMethod.SelectionRecipe:
                         log += Environment.NewLine +
-                        "   CREATE UNIVERSAL BOLT CONNECTIONS      [SELECTION RECIPE BASED]" + Environment.NewLine + Environment.NewLine;
+                        "   CREATE UNIVERSAL BOLT CONNECTIONS      [SELECTION RECIPE BASED]" + Environment.NewLine;
                         break;
                     case CurveSearchingMethod.LineOccurrence:
                         log += Environment.NewLine +
-                        "   CREATE UNIVERSAL BOLT CONNECTIONS      [LINE OCCURRENCE BASED]" + Environment.NewLine + Environment.NewLine;
+                        "   CREATE UNIVERSAL BOLT CONNECTIONS      [LINE OCCURRENCE BASED]" + Environment.NewLine;
                         break;
 
                     default:
@@ -1579,10 +1592,10 @@ namespace UCCreator
                     : myFEM.BaseFEModel.ConnectionsContainer.GetAllConnections().Select(x => x.Name).ToList();
 
 
-                foreach (string connName in existingUnivConnNames)
-                {
-                    log += "Existing Connection:  " + connName + Environment.NewLine;
-                }
+                //foreach (string connName in existingUnivConnNames)
+                //{
+                //    log += "      Existing Connection:  " + connName + Environment.NewLine;
+                //}
                 
                 // Loop through all predefined Bolt Definitions
                 foreach (MODELS.BoltDefinition boltDefinition in allBoltDefinitions)
@@ -1597,7 +1610,7 @@ namespace UCCreator
                             // - it can be re-generated, but only if the related Selection Recipe has entities in it
                             NXOpen.CAE.Connections.IConnection connToDelete = null;
 
-                            log += "TRYING TO DELETE EXISTING BOLT CONNECTION" + Environment.NewLine;
+                            //log += "TRYING TO DELETE EXISTING BOLT CONNECTION" + Environment.NewLine;
                             if (isAFEM)
                             {
                                 connToDelete = myAFEM.BaseFEModel.ConnectionsContainer.GetAllConnections().ToList().Single(x => x.Name == boltDefinition.Name);
@@ -1783,7 +1796,7 @@ namespace UCCreator
                 // Realize all new Universal Bolt Connection definitions
                 // -----------------------------------------------------
                 log += Environment.NewLine +
-                    "   REALIZE UNIVERSAL BOLT CONNECTIONS" + Environment.NewLine + Environment.NewLine;
+                    "   REALIZE UNIVERSAL BOLT CONNECTIONS" + Environment.NewLine;
                 SetNXstatusMessage(baseMsg + "   | Realizing all bolt connections' 1D elements...");
 
                 NXOpen.CAE.Connections.Element boltConnElement = isAFEM
@@ -1884,6 +1897,93 @@ namespace UCCreator
 
             // Return result
             return allCurveOccurrences;
+        }
+
+
+        /// <summary>
+        /// Replaces the References Set of the target FEM object to the "CAE" Reference Set
+        /// </summary>
+        /// <param name="myFEM">Target FEM object</param>
+        private static void ReplaceReferenceSet(NXOpen.CAE.FemPart myFEM)
+        {
+            log += Environment.NewLine +
+                "   REPLACE REFERENCE SET" + Environment.NewLine;
+
+            try
+            {
+                // Initializations
+                List<NXOpen.Assemblies.Component> targComponents = new List<NXOpen.Assemblies.Component>();
+                string targReferenceSet = "Entire Part";
+                //string targReferenceSet = "CAE";
+
+                // Get all underlying Components to change the Reference Set for
+                targComponents = GetAllComponents(myFEM.MasterCadPart.ComponentAssembly.RootComponent, targComponents);
+
+                log += "      Target components:" + Environment.NewLine;
+                foreach (NXOpen.Assemblies.Component component in targComponents)
+                {
+                    log += "         " + component.Name.ToUpper() + Environment.NewLine;
+                }
+
+                // Change the Reference Set of each target component to the "CAE" Reference Set
+                NXOpen.ErrorList errorList = myFEM.ComponentAssembly.ReplaceReferenceSetInOwners(targReferenceSet, targComponents.ToArray());
+                errorList.Dispose();
+
+                log += "      Changed Reference Set to:   " + targReferenceSet + Environment.NewLine;
+            }
+            catch (Exception e)
+            {
+                log += "!ERROR occurred: " + e.ToString() + Environment.NewLine;
+            }
+        }
+
+
+        /// <summary>
+        /// Loop through all underlying components and collect them in a list
+        /// </summary>
+        /// <param name="targComponent">Object to start looking from</param>
+        /// <param name="targComponents">List to collect all component objects</param>
+        /// <returns></returns>
+        private static List<NXOpen.Assemblies.Component> GetAllComponents(NXOpen.Assemblies.Component targComponent, List<NXOpen.Assemblies.Component> targComponents)
+        {
+            targComponents.Add(targComponent);
+
+            // Loop through child Components
+            foreach (NXOpen.Assemblies.Component childComp in targComponent.GetChildren())
+            {
+                targComponents = GetAllComponents(childComp, targComponents);
+            }
+
+            return targComponents;
+        }
+
+
+        /// <summary>
+        /// Updates the Geometry Options of a FEM object, so that it includes Lines, Arcs & Circles, Splines, Conics and Sketch Curves
+        /// </summary>
+        /// <param name="targFEM">Target FEM object</param>
+        private static void SetFEMGeometryOptions(NXOpen.CAE.FemPart targFEM)
+        {
+            log += Environment.NewLine +
+                "   SET GEOMETRY OPTIONS" + Environment.NewLine;
+
+            // Create FemSynchronizeOptions
+            NXOpen.CAE.FemSynchronizeOptions targFemSynchronizeOptions = targFEM.NewFemSynchronizeOptions();
+
+            // Configure FemSynchronizeOptions
+            targFemSynchronizeOptions.SynchronizePointsFlag = false;
+            targFemSynchronizeOptions.SynchronizeCoordinateSystemFlag = false;
+            targFemSynchronizeOptions.SynchronizeLinesFlag = true;
+            targFemSynchronizeOptions.SynchronizeArcsFlag = true;
+            targFemSynchronizeOptions.SynchronizeSplinesFlag = true;
+            targFemSynchronizeOptions.SynchronizeConicsFlag = true;
+            targFemSynchronizeOptions.SynchronizeSketchCurvesFlag = true;
+
+            // Assign FemSynchronizeOptions in Geometry Data settings
+            List<Body> targBodies = new List<Body>();
+            targFEM.SetGeometryData(NXOpen.CAE.FemPart.UseBodiesOption.AllBodies, targBodies.ToArray(), targFemSynchronizeOptions);
+
+            log += "      Set to: LINES, ARCS & CIRCLES, SPLINES, CONICS, SKETCH CURVES" + Environment.NewLine;
         }
         #endregion
     }
