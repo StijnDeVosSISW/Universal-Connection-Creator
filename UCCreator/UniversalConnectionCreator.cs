@@ -1815,6 +1815,12 @@ namespace UCCreator
                                 goto matfound;
                             }
                             catch (Exception) { }
+                            try
+                            {
+                                targMaterial = targCAEPart.MaterialManager.PhysicalMaterials.LoadFromMatmlLibrary("oce_material_library", boltDefinition.MaterialName);
+                                goto matfound;
+                            }
+                            catch (Exception) { }
 
                             log += "         ! MATERIAL COULD NOT BE FOUND :  " + boltDefinition.MaterialName + Environment.NewLine;
                             continue;
