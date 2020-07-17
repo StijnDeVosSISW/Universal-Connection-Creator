@@ -75,6 +75,7 @@ namespace UCCreator
         private static bool ProcessAll = true;
         private static bool RunValidatorAfter = false;
         private static string PathToValidatorExe = "";
+        private static string targReferenceSet = "";
         private static NXOpen.BasePart currWork = null;
 
         private enum CurveSearchingMethod { SelectionRecipe, LineOccurrence};
@@ -100,9 +101,9 @@ namespace UCCreator
                 myStopwatch = new System.Diagnostics.Stopwatch();
 
                 // Set path to GUI .dlx file 
-                //targEnv = TargEnv.Production;
+                targEnv = TargEnv.Production;
                 //TargEnv targEnv = TargEnv.Debug;
-                TargEnv targEnv = TargEnv.Siemens;
+                //TargEnv targEnv = TargEnv.Siemens;
 
                 // Set Curve Searching method
                 targCurveSearching = CurveSearchingMethod.LineOccurrence;
@@ -112,14 +113,17 @@ namespace UCCreator
                     case TargEnv.Production:
                         theDlxFileName = @"D:\NX\CAE\UBC\ABC\UniversalConnectionCreator\UniversalConnectionCreator.dlx";  // IN CPP TC environment as Production tool
                         PathToValidatorExe = @"D:\NX\CAE\UBC\ABC\UniversalConnectionValidator\UCValidator.dll";
+                        targReferenceSet = "CAE";
                         break;
                     case TargEnv.Debug:
                         theDlxFileName = @"C:\sdevos\ABC NXOpen applications\ABC applications\application\UniversalConnectionCreator.dlx";  // Debug by Stijn in CPP TC environment
                         PathToValidatorExe = @"C:\sdevos\ABC NXOpen applications\ABC applications\application\UCValidator.dll";
+                        targReferenceSet = "CAE";
                         break;
                     case TargEnv.Siemens:
                         theDlxFileName = "UniversalConnectionCreator.dlx";  // In Siemens TC environment
                         PathToValidatorExe = @"D:\3__TEAMCENTER\2_Projects\2_OCE_TCSimRollOut\4_Automatic_Bolt_Connections__Part_Families\UNIVERSAL CONNECTION VALIDATER\INSTALL\UniversalConnectionValidater\application\UCValidator.dll";
+                        targReferenceSet = "Entire Part";
                         break;
                     default:
                         break;
@@ -498,35 +502,8 @@ namespace UCCreator
                     lw.Open();
                     lw.WriteFullline(log);
 
-
-                    // If desired, run Validator after successful Creator execution
-                    if (File.Exists(PathToValidatorExe))
-                    {
-                        if (RunValidatorAfter)
-                        {
-                            //List<System.String> inputArgs = new List<System.String>();
-                            //inputArgs.Add("test");
-                            //inputArgs.Add("test2");
-                            List<Object> inputArgs = new List<object>();
-                            //inputArgs.Add(true);
-                            inputArgs.Add("-path=test");
-                            inputArgs.Add("-path=test");
-                            theUI.NXMessageBox.Show("Input arguments", NXMessageBox.DialogType.Information, inputArgs.ToString());
-
-                            theSession.Execute(PathToValidatorExe, "Program", "Main", inputArgs.ToArray());
-                            //theSession.Execute(PathToValidatorExe, "Program", "SetNXstatusMessage", new string[] { "VALIDATOR RUN FROM CREATOR"});
-                        }
-                    }
-                    else
-                    {
-                        theUI.NXMessageBox.Show("Running Validator went wrong:", NXMessageBox.DialogType.Warning, "Could not find Validator executable:" + Environment.NewLine + 
-                            Environment.NewLine + 
-                            "Target path = " + PathToValidatorExe + Environment.NewLine +
-                            "(Target environment:  " + targEnv.ToString() + ")" + Environment.NewLine +
-                            Environment.NewLine + 
-                            "Are you sure this path exists?" + Environment.NewLine + 
-                            "If yes, ask Siemens to put in the correct target path for the Validator executable.");
-                    }
+                    // Run VALIDATOR, if selected
+                    RunValidator();
                 }
                 else if (block == separator01)
                 {
@@ -1490,7 +1467,8 @@ namespace UCCreator
             try
             {
                 log += Environment.NewLine +
-                "   CREATE SELECTION RECIPES" + Environment.NewLine;
+                "   CREATE SELECTION RECIPES" + Environment.NewLine +
+                "   ------------------------" + Environment.NewLine;
 
                 // Set Working, if needed
                 if (theSession.Parts.BaseWork.Tag != myCAEPart.Tag) { theSession.Parts.SetWork((NXOpen.BasePart)myCAEPart); }
@@ -1619,11 +1597,13 @@ namespace UCCreator
                 {
                     case CurveSearchingMethod.SelectionRecipe:
                         log += Environment.NewLine +
-                        "   CREATE UNIVERSAL BOLT CONNECTIONS      [SELECTION RECIPE BASED]" + Environment.NewLine;
+                        "   CREATE UNIVERSAL BOLT CONNECTIONS      [SELECTION RECIPE BASED]" + Environment.NewLine +
+                        "   ---------------------------------" + Environment.NewLine;
                         break;
                     case CurveSearchingMethod.LineOccurrence:
                         log += Environment.NewLine +
-                        "   CREATE UNIVERSAL BOLT CONNECTIONS      [LINE OCCURRENCE BASED]" + Environment.NewLine;
+                        "   CREATE UNIVERSAL BOLT CONNECTIONS      [LINE OCCURRENCE BASED]" + Environment.NewLine +
+                        "   ---------------------------------" + Environment.NewLine;
                         break;
 
                     default:
@@ -1861,7 +1841,8 @@ namespace UCCreator
                 // Realize all new Universal Bolt Connection definitions
                 // -----------------------------------------------------
                 log += Environment.NewLine +
-                    "   REALIZE UNIVERSAL BOLT CONNECTIONS" + Environment.NewLine;
+                    "   REALIZE UNIVERSAL BOLT CONNECTIONS" + Environment.NewLine +
+                    "   ----------------------------------" + Environment.NewLine;
                 SetNXstatusMessage(baseMsg + "   | Realizing all bolt connections' 1D elements...");
 
                 NXOpen.CAE.Connections.Element boltConnElement = isAFEM
@@ -1972,13 +1953,14 @@ namespace UCCreator
         private static void ReplaceReferenceSet(NXOpen.CAE.FemPart myFEM)
         {
             log += Environment.NewLine +
-                "   REPLACE REFERENCE SET" + Environment.NewLine;
+                "   REPLACE REFERENCE SET" + Environment.NewLine +
+                "   ---------------------" + Environment.NewLine;
 
             try
             {
                 // Initializations
                 List<NXOpen.Assemblies.Component> targComponents = new List<NXOpen.Assemblies.Component>();
-                string targReferenceSet = "Entire Part";
+                //string targReferenceSet = "Entire Part";  --> Moved to Global Variables
                 //string targReferenceSet = "CAE";
 
                 // Get all underlying Components to change the Reference Set for
@@ -2030,7 +2012,8 @@ namespace UCCreator
         private static void SetFEMGeometryOptions(NXOpen.CAE.FemPart targFEM)
         {
             log += Environment.NewLine +
-                "   SET GEOMETRY OPTIONS" + Environment.NewLine;
+                "   SET GEOMETRY OPTIONS" + Environment.NewLine +
+                "   --------------------" + Environment.NewLine;
 
             // Create FemSynchronizeOptions
             NXOpen.CAE.FemSynchronizeOptions targFemSynchronizeOptions = targFEM.NewFemSynchronizeOptions();
@@ -2049,6 +2032,42 @@ namespace UCCreator
             targFEM.SetGeometryData(NXOpen.CAE.FemPart.UseBodiesOption.AllBodies, targBodies.ToArray(), targFemSynchronizeOptions);
 
             log += "      Set to: LINES, ARCS & CIRCLES, SPLINES, CONICS, SKETCH CURVES" + Environment.NewLine;
+        }
+
+
+        /// <summary>
+        /// Execute VALIDATOR tool, after Creator tool has successfully created all pre-defined Universal Bolt Connections
+        /// </summary>
+        private static void RunValidator()
+        {
+            // If desired, run Validator after successful Creator execution
+            if (File.Exists(PathToValidatorExe))
+            {
+                if (RunValidatorAfter)
+                {
+                    //List<System.String> inputArgs = new List<System.String>();
+                    //inputArgs.Add("test");
+                    //inputArgs.Add("test2");
+                    List<Object> inputArgs = new List<object>();
+                    //inputArgs.Add(true);
+                    inputArgs.Add("-path=test");
+                    inputArgs.Add("-path=test");
+                    theUI.NXMessageBox.Show("Input arguments", NXMessageBox.DialogType.Information, inputArgs.ToString());
+
+                    theSession.Execute(PathToValidatorExe, "Program", "Main", inputArgs.ToArray());
+                    //theSession.Execute(PathToValidatorExe, "Program", "SetNXstatusMessage", new string[] { "VALIDATOR RUN FROM CREATOR"});
+                }
+            }
+            else
+            {
+                theUI.NXMessageBox.Show("Running Validator went wrong:", NXMessageBox.DialogType.Warning, "Could not find Validator executable:" + Environment.NewLine +
+                    Environment.NewLine +
+                    "Target path = " + PathToValidatorExe + Environment.NewLine +
+                    "(Target environment:  " + targEnv.ToString() + ")" + Environment.NewLine +
+                    Environment.NewLine +
+                    "Are you sure this path exists?" + Environment.NewLine +
+                    "If yes, ask Siemens to put in the correct target path for the Validator executable.");
+            }
         }
         #endregion
     }
