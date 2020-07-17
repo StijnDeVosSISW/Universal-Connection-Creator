@@ -48,7 +48,10 @@ namespace UCCreator
         private NXOpen.BlockStyler.FileSelection nativeFileBrowser0;// Block type: NativeFileBrowser'
         private NXOpen.BlockStyler.Button button_IMPORT;// Block type: Button
         private NXOpen.BlockStyler.Enumeration enum0;// Block type: Enumeration
+        private NXOpen.BlockStyler.Group group2;// Block type: Group
+        private NXOpen.BlockStyler.Toggle toggle_Validator;// Block type: Toggle
         private NXOpen.BlockStyler.Button button_CREATE;// Block type: Button
+        private NXOpen.BlockStyler.Separator separator01;// Block type: Separator
 
         // TreeList variables
         private static List<NXOpen.BlockStyler.Node> allNodes = new List<Node>();
@@ -57,6 +60,7 @@ namespace UCCreator
 
         // Application specific variables
         private enum TargEnv { Production, Debug, Siemens };
+        private static TargEnv targEnv;
 
         private static List<NXOpen.NXObject> allTargObjects = new List<NXObject>();
         private static List<NXOpen.NXObject> objectsToUpdate = new List<NXObject>();
@@ -69,6 +73,8 @@ namespace UCCreator
         private static string StoragePath_user = null;
 
         private static bool ProcessAll = true;
+        private static bool RunValidatorAfter = false;
+        private static string PathToValidatorExe = "";
         private static NXOpen.BasePart currWork = null;
 
         private enum CurveSearchingMethod { SelectionRecipe, LineOccurrence};
@@ -94,9 +100,9 @@ namespace UCCreator
                 myStopwatch = new System.Diagnostics.Stopwatch();
 
                 // Set path to GUI .dlx file 
-                TargEnv targEnv = TargEnv.Production;
+                //targEnv = TargEnv.Production;
                 //TargEnv targEnv = TargEnv.Debug;
-                //TargEnv targEnv = TargEnv.Siemens;
+                TargEnv targEnv = TargEnv.Siemens;
 
                 // Set Curve Searching method
                 targCurveSearching = CurveSearchingMethod.LineOccurrence;
@@ -105,12 +111,15 @@ namespace UCCreator
                 {
                     case TargEnv.Production:
                         theDlxFileName = @"D:\NX\CAE\UBC\ABC\UniversalConnectionCreator\UniversalConnectionCreator.dlx";  // IN CPP TC environment as Production tool
+                        PathToValidatorExe = @"D:\NX\CAE\UBC\ABC\UniversalConnectionValidator\UCValidator.dll";
                         break;
                     case TargEnv.Debug:
                         theDlxFileName = @"C:\sdevos\ABC NXOpen applications\ABC applications\application\UniversalConnectionCreator.dlx";  // Debug by Stijn in CPP TC environment
+                        PathToValidatorExe = @"C:\sdevos\ABC NXOpen applications\ABC applications\application\UCValidator.dll";
                         break;
                     case TargEnv.Siemens:
                         theDlxFileName = "UniversalConnectionCreator.dlx";  // In Siemens TC environment
+                        PathToValidatorExe = @"D:\3__TEAMCENTER\2_Projects\2_OCE_TCSimRollOut\4_Automatic_Bolt_Connections__Part_Families\UNIVERSAL CONNECTION VALIDATER\INSTALL\UniversalConnectionValidater\application\UCValidator.dll";
                         break;
                     default:
                         break;
@@ -266,14 +275,21 @@ namespace UCCreator
                 nativeFileBrowser0 = (NXOpen.BlockStyler.FileSelection)theDialog.TopBlock.FindBlock("nativeFileBrowser0");
                 button_IMPORT = (NXOpen.BlockStyler.Button)theDialog.TopBlock.FindBlock("button_IMPORT");
                 enum0 = (NXOpen.BlockStyler.Enumeration)theDialog.TopBlock.FindBlock("enum0");
+                group2 = (NXOpen.BlockStyler.Group)theDialog.TopBlock.FindBlock("group2");
+                toggle_Validator = (NXOpen.BlockStyler.Toggle)theDialog.TopBlock.FindBlock("toggle_Validator");
                 button_CREATE = (NXOpen.BlockStyler.Button)theDialog.TopBlock.FindBlock("button_CREATE");
-                
+                separator01 = (NXOpen.BlockStyler.Separator)theDialog.TopBlock.FindBlock("separator01");
+
                 // Initialize storage paths
                 StoragePath_server = System.Reflection.Assembly.GetExecutingAssembly().CodeBase;
                 StoragePath_server = StoragePath_server.Remove(StoragePath_server.LastIndexOf("/")) + "\\" + StorageFileName + ".txt";
                 StoragePath_server = StoragePath_server.Substring(StoragePath_server.IndexOf("/")).Substring(3).Replace("/", "\\");
 
                 StoragePath_user = Environment.GetEnvironmentVariable("USERPROFILE") + "\\AppData\\Local\\UniversalConnectionCreator\\" + StorageFileName + ".txt";
+
+                // Get initial value for "Run Validator after Creator setting"
+                RunValidatorAfter = toggle_Validator.Value;
+
 
                 //------------------------------------------------------------------------------
                 //Registration of Treelist specific callbacks
@@ -372,19 +388,10 @@ namespace UCCreator
                 }
 
                 // Check value of process level switch
-                switch (enum0.ValueAsString)
-                {
-                    case "This level and all sub-levels":
-                        ProcessAll = true;
-                        break;
+                UpdateProcessAll();
 
-                    case "This level only":
-                        ProcessAll = false;
-                        break;
-
-                    default:
-                        break;
-                }
+                // Check value of RunValidatorAfter
+                UpdateRunValidatorAfter();
 
                 // Get current working object
                 currWork = theSession.Parts.BaseWork;
@@ -466,19 +473,11 @@ namespace UCCreator
                 }
                 else if (block == enum0)
                 {
-                    switch (enum0.ValueAsString)
-                    {
-                        case "This level and all sub-levels":
-                            ProcessAll = true;
-                            break;
-
-                        case "This level only":
-                            ProcessAll = false;
-                            break;
-
-                        default:
-                            break;
-                    }
+                    UpdateProcessAll();
+                }
+                else if (block == toggle_Validator)
+                {
+                    UpdateRunValidatorAfter();
                 }
                 else if (block == button_CREATE)
                 {
@@ -498,6 +497,40 @@ namespace UCCreator
                     if (lw.IsOpen) { lw.Close(); }
                     lw.Open();
                     lw.WriteFullline(log);
+
+
+                    // If desired, run Validator after successful Creator execution
+                    if (File.Exists(PathToValidatorExe))
+                    {
+                        if (RunValidatorAfter)
+                        {
+                            //List<System.String> inputArgs = new List<System.String>();
+                            //inputArgs.Add("test");
+                            //inputArgs.Add("test2");
+                            List<Object> inputArgs = new List<object>();
+                            //inputArgs.Add(true);
+                            inputArgs.Add("-path=test");
+                            inputArgs.Add("-path=test");
+                            theUI.NXMessageBox.Show("Input arguments", NXMessageBox.DialogType.Information, inputArgs.ToString());
+
+                            theSession.Execute(PathToValidatorExe, "Program", "Main", inputArgs.ToArray());
+                            //theSession.Execute(PathToValidatorExe, "Program", "SetNXstatusMessage", new string[] { "VALIDATOR RUN FROM CREATOR"});
+                        }
+                    }
+                    else
+                    {
+                        theUI.NXMessageBox.Show("Running Validator went wrong:", NXMessageBox.DialogType.Warning, "Could not find Validator executable:" + Environment.NewLine + 
+                            Environment.NewLine + 
+                            "Target path = " + PathToValidatorExe + Environment.NewLine +
+                            "(Target environment:  " + targEnv.ToString() + ")" + Environment.NewLine +
+                            Environment.NewLine + 
+                            "Are you sure this path exists?" + Environment.NewLine + 
+                            "If yes, ask Siemens to put in the correct target path for the Validator executable.");
+                    }
+                }
+                else if (block == separator01)
+                {
+                    //---------Enter your code here-----------
                 }
             }
             catch (Exception ex)
@@ -984,6 +1017,38 @@ namespace UCCreator
                 log += "!ERROR occurred: " + Environment.NewLine +
                     e.ToString() + Environment.NewLine;
             }
+        }
+
+        /// <summary>
+        /// Updates value of ProcessAll, based on input coming from GUI
+        /// </summary>
+        private void UpdateProcessAll()
+        {
+            switch (enum0.ValueAsString)
+            {
+                case "All assyFEM levels":
+                    ProcessAll = true;
+                    //theUI.NXMessageBox.Show("Selection of target (A)FEM level changed:", NXMessageBox.DialogType.Information, "Set to:  All assyFEM levels");
+                    break;
+
+                case "This level only":
+                    ProcessAll = false;
+                    //theUI.NXMessageBox.Show("Selection of target (A)FEM level changed:", NXMessageBox.DialogType.Information, "Set to:  This level only");
+                    break;
+
+                default:
+                    //theUI.NXMessageBox.Show("Selection of target (A)FEM level changed:", NXMessageBox.DialogType.Information, "NOT FOUND!" + Environment.NewLine + 
+                    //    "Set to:  " + enum0.ValueAsString);
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Updates value of RunValidatorAfter, based on input coming from GUI
+        /// </summary>
+        private void UpdateRunValidatorAfter()
+        {
+            RunValidatorAfter = toggle_Validator.Value;
         }
 
         /// <summary>
