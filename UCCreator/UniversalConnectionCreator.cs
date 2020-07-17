@@ -873,15 +873,15 @@ namespace UCCreator
                         currLine = currLine.Substring(currLine.IndexOf("|") + 2);
 
                         // Shank Diameter
-                        newBoltDefinition.ShankDiam = Convert.ToInt32(currLine.Remove(currLine.IndexOf("|") - 1));
+                        newBoltDefinition.ShankDiam = Convert.ToDouble(currLine.Remove(currLine.IndexOf("|") - 1));
                         currLine = currLine.Substring(currLine.IndexOf("|") + 2);
 
                         // Head Diameter
-                        newBoltDefinition.HeadDiam = Convert.ToInt32(currLine.Remove(currLine.IndexOf("|") - 1));
+                        newBoltDefinition.HeadDiam = Convert.ToDouble(currLine.Remove(currLine.IndexOf("|") - 1));
                         currLine = currLine.Substring(currLine.IndexOf("|") + 2);
 
                         // Maximum Connection Length
-                        newBoltDefinition.MaxConnLength = Convert.ToInt32(currLine.Remove(currLine.IndexOf("|") - 1));
+                        newBoltDefinition.MaxConnLength = Convert.ToDouble(currLine.Remove(currLine.IndexOf("|") - 1));
                         currLine = currLine.Substring(currLine.IndexOf("|") + 2);
 
                         // Material
@@ -2040,6 +2040,14 @@ namespace UCCreator
         /// </summary>
         private static void RunValidator()
         {
+
+
+
+            return;
+
+
+
+
             // If desired, run Validator after successful Creator execution
             if (File.Exists(PathToValidatorExe))
             {
