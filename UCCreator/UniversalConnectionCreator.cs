@@ -1998,7 +1998,9 @@ namespace UCCreator
             }
             catch (Exception e)
             {
-                log += "!ERROR occurred: " + e.ToString() + Environment.NewLine;
+                log += "!ERROR occurred:  Are you sure the underlying Idealized Geometry and CAD data are loaded?" + Environment.NewLine +
+                    Environment.NewLine + 
+                    e.ToString() + Environment.NewLine;
             }
         }
 
@@ -2040,9 +2042,9 @@ namespace UCCreator
             targFemSynchronizeOptions.SynchronizePointsFlag = false;
             targFemSynchronizeOptions.SynchronizeCoordinateSystemFlag = false;
             targFemSynchronizeOptions.SynchronizeLinesFlag = true;
-            targFemSynchronizeOptions.SynchronizeArcsFlag = true;
-            targFemSynchronizeOptions.SynchronizeSplinesFlag = true;
-            targFemSynchronizeOptions.SynchronizeConicsFlag = true;
+            targFemSynchronizeOptions.SynchronizeArcsFlag = false;
+            targFemSynchronizeOptions.SynchronizeSplinesFlag = false;
+            targFemSynchronizeOptions.SynchronizeConicsFlag = false;
             targFemSynchronizeOptions.SynchronizeSketchCurvesFlag = true;
 
             // Assign FemSynchronizeOptions in Geometry Data settings
