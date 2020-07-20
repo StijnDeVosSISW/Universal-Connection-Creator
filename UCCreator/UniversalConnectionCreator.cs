@@ -22,6 +22,7 @@ using System.Text;
 using System.Threading.Tasks;
 using NXOpen;
 using NXOpen.BlockStyler;
+using UCCreator.SERVICES;
 
 namespace UCCreator
 {
@@ -65,9 +66,6 @@ namespace UCCreator
         private static List<NXOpen.NXObject> allTargObjects = new List<NXObject>();
         private static List<NXOpen.NXObject> objectsToUpdate = new List<NXObject>();
 
-        //private static List<NXOpen.Part> underlyingCAD = new List<NXOpen.Part>();
-        //private static List<NXOpen.CAE.CaePart> underlyingCAE = new List<NXOpen.CAE.CaePart>();
-
         private static string StorageFileName = "UCCreator_SavedBoltDefinitions";  // Name of Excel file in which content of Universal Conn Def tree will be stored for later use
         private static string StoragePath_server = null;
         private static string StoragePath_user = null;
@@ -80,6 +78,8 @@ namespace UCCreator
 
         private enum CurveSearchingMethod { SelectionRecipe, LineOccurrence};
         private static CurveSearchingMethod targCurveSearching;
+
+        private static string ProcessReport = "";
 
         // Diagnostic variables
         private static System.Diagnostics.Stopwatch myStopwatch = null;
@@ -501,6 +501,9 @@ namespace UCCreator
                     if (lw.IsOpen) { lw.Close(); }
                     lw.Open();
                     lw.WriteFullline(log);
+
+                    ReportService.ProcessErrorStack();
+                    lw.WriteFullline(ReportService.GetContent());
 
                     // Run VALIDATOR, if selected
                     RunValidator();
@@ -1051,6 +1054,7 @@ namespace UCCreator
                     " -------------------------------------------- " + Environment.NewLine;
 
                 log += "Generate list of predefined Bolt Connections..." + Environment.NewLine;
+                ReportService.SetTitle("CREATE LIST OF PREDEFINED BOLT CONNECTIONS");
 
                 allBoltDefinitions.Clear();
 
@@ -1069,6 +1073,7 @@ namespace UCCreator
                 }
 
                 SetNXstatusMessage("Generated list of predefined bolt connections ...");
+                ReportService.ProcessErrorStack();
 
                 myStopwatch.Stop();
                 log += Environment.NewLine + 
@@ -1086,6 +1091,8 @@ namespace UCCreator
                     " --------------------------- " + Environment.NewLine +
                     "| Gather all (A)FEM objects |" + Environment.NewLine +
                     " --------------------------- " + Environment.NewLine;
+
+                ReportService.SetTitle("GATHER ALL (A)FEM OBJECTS TO PROCESS");
 
                 currWork = theSession.Parts.BaseWork;
                 log += "Current working object :  " + currWork.ToString() + Environment.NewLine;
@@ -1165,6 +1172,7 @@ namespace UCCreator
                 }
 
 
+                ReportService.ProcessErrorStack();
 
                 myStopwatch.Stop();
                 log += Environment.NewLine + 
@@ -1182,6 +1190,7 @@ namespace UCCreator
                     " ---------------------------- " + Environment.NewLine +
                     "| Process each (A)FEM object |" + Environment.NewLine +
                     " ---------------------------- " + Environment.NewLine;
+                ReportService.SetTitle("PROCESS EACH (A)FEM OBJECT");
                 int i = 1;
                 int tot = allTargObjects.Count;
                 bool SelRecipesHaveCurves = false;
@@ -1202,6 +1211,8 @@ namespace UCCreator
                         targObj.Name.ToUpper() + Environment.NewLine +
                         "=================================================================================" + Environment.NewLine;
 
+                    ReportService.SetTitle(targObj.Name.ToUpper());
+
                     // Check whether it is a FEM or an Assembly FEM object
                     bool isFEM = targObj.GetType().ToString() == "NXOpen.CAE.FemPart" ? true : false;
 
@@ -1212,6 +1223,7 @@ namespace UCCreator
                     if (isFEM && ProcessAll)
                     {
                         log += "---> Current run is processing Assembly FEM levels only:   SKIPPED" + Environment.NewLine;
+                        ReportService.ProcessErrorStack();
                         continue;
                     }
 
@@ -1232,6 +1244,7 @@ namespace UCCreator
                     if (!GetAllCurveOccurrences(targObj.Tag).Any(x => x.Name.Contains("CURVE_")))
                     {
                         log += "---> Object does not contain any curve with CURVE_ in its name:  SKIPPED" + Environment.NewLine;
+                        ReportService.ProcessErrorStack();
                         continue;
                     }
 
@@ -1257,6 +1270,7 @@ namespace UCCreator
                             log += Environment.NewLine +
                                 "===> FEM does not contain any mesh objects:  assumed to be a bolt representation  (-> SKIPPED)" + Environment.NewLine;
                             i++;
+                            ReportService.ProcessErrorStack();
                             continue;
                         }
                     }
@@ -1292,6 +1306,8 @@ namespace UCCreator
                     objectsToUpdate.Add(targObj);
 
 
+                    ReportService.ProcessErrorStack();
+
                     // Diagnostics
                     log += Environment.NewLine +
                         "DIAGNOSTICS" + Environment.NewLine +
@@ -1303,6 +1319,9 @@ namespace UCCreator
                         
                     i++;
                 }
+
+
+                ReportService.ProcessErrorStack();
 
                 myStopwatch.Stop();
                 log += Environment.NewLine + 
@@ -1320,6 +1339,7 @@ namespace UCCreator
                     " ------------------------------------------------ " + Environment.NewLine +
                     "| Update (A)FEM objects that have pending update |" + Environment.NewLine +
                     " ------------------------------------------------ " + Environment.NewLine;
+                ReportService.SetTitle("UPDATE EACH (A)FEM OBJECT");
 
                 // Reverse order of list of object to update, to make sure that the updating happens bottom-up
                 objectsToUpdate.Reverse();
@@ -1338,6 +1358,8 @@ namespace UCCreator
                     j++;
                 }
 
+                ReportService.ProcessErrorStack();
+
                 myStopwatch.Stop();
                 log += "[" + myStopwatch.Elapsed.TotalSeconds.ToString() + " seconds]" + Environment.NewLine;
                 ExecutionTimes.Add(myStopwatch.Elapsed.TotalSeconds);
@@ -1350,7 +1372,8 @@ namespace UCCreator
 
                 //lw.Open();
 
-                // Diagnostics
+                // DIAGNOSTICS
+                // -----------
                 log += Environment.NewLine +
                     "DIAGNOSTICS" + Environment.NewLine +
                     "-----------" + Environment.NewLine +
@@ -1364,7 +1387,11 @@ namespace UCCreator
                 log += "!ERROR occurred: " + Environment.NewLine +
                     e.ToString() + Environment.NewLine;
 
+                ReportService.AddErrorMsg(e.ToString());
+                ReportService.ProcessErrorStack();
+
                 lw.WriteFullline(log);
+                lw.WriteFullline(ReportService.GetContent());
                 lw.Open();
             }
         }
@@ -1579,6 +1606,8 @@ namespace UCCreator
             {
                 log += "!ERROR occurred: " + Environment.NewLine +
                     e.ToString() + Environment.NewLine;
+
+                ReportService.AddErrorMsg(" {CREATE SELECTION RECIPIES}" + Environment.NewLine + e.ToString());
             }
 
             return CreatedCurveSelRecipe;
@@ -1835,6 +1864,7 @@ namespace UCCreator
                             catch (Exception) { }
 
                             log += "         ! MATERIAL COULD NOT BE FOUND :  " + boltDefinition.MaterialName + Environment.NewLine;
+                            ReportService.AddErrorMsg(" {" + boltDefinition.Name + "  (" + targCAEPart.Name + ")} MATERIAL COULD NOT BE FOUND :" + boltDefinition.MaterialName + Environment.NewLine);
                             continue;
                         }
 
@@ -1853,6 +1883,8 @@ namespace UCCreator
                     {
                         log += "!ERROR occurred while creating Bolt Connection: " + Environment.NewLine +
                         er.ToString() + Environment.NewLine;
+
+                        ReportService.AddErrorMsg(" {" + boltDefinition.Name + "  (" + targCAEPart.Name + ")} " + Environment.NewLine + er.ToString());
                     }
                 }
 
@@ -1877,6 +1909,8 @@ namespace UCCreator
             {
                 log += "!ERROR occurred: " + Environment.NewLine +
                     e.ToString() + Environment.NewLine;
+
+                ReportService.AddErrorMsg(" {Create Universal Bolt Connections process} " + Environment.NewLine + e.ToString());
             }
         }
         
@@ -2001,6 +2035,9 @@ namespace UCCreator
                 log += "!ERROR occurred:  Are you sure the underlying Idealized Geometry and CAD data are loaded?" + Environment.NewLine +
                     Environment.NewLine + 
                     e.ToString() + Environment.NewLine;
+
+                ReportService.AddErrorMsg(" {" + myFEM.Name.ToUpper() + "}  Are you sure the underlying Idealized Geometry and CAD data are loaded?" + Environment.NewLine + 
+                    e.ToString());
             }
         }
 

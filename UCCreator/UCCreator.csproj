@@ -120,6 +120,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="SERVICES\ReportService.cs" />
     <Compile Include="UniversalConnectionCreator.cs" />
   </ItemGroup>
   <ItemGroup>
