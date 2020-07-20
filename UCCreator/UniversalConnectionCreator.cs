@@ -101,9 +101,9 @@ namespace UCCreator
                 myStopwatch = new System.Diagnostics.Stopwatch();
 
                 // Set path to GUI .dlx file 
-                targEnv = TargEnv.Production;
-                //TargEnv targEnv = TargEnv.Debug;
-                //TargEnv targEnv = TargEnv.Siemens;
+                //targEnv = TargEnv.Production;
+                //targEnv = TargEnv.Debug;
+                targEnv = TargEnv.Siemens;
 
                 // Set Curve Searching method
                 targCurveSearching = CurveSearchingMethod.LineOccurrence;
@@ -1817,7 +1817,19 @@ namespace UCCreator
                             catch (Exception) { }
                             try
                             {
-                                targMaterial = targCAEPart.MaterialManager.PhysicalMaterials.LoadFromMatmlLibrary("oce_material_library", boltDefinition.MaterialName);
+                                string custom_library_path = "";
+                                log += "TARGENV = " + targEnv.ToString();
+                                if (targEnv == TargEnv.Siemens) 
+                                { 
+                                    custom_library_path = @"D:\3__TEAMCENTER\2_Projects\2_OCE_TCSimRollOut\4_Automatic_Bolt_Connections__Part_Families\CUSTOMER DATA\MATERIAL LIBRARIES\oce_material_library.xml"; 
+                                }
+                                else
+                                {
+                                    custom_library_path = Environment.GetEnvironmentVariable("PLMHOST") + @"\plmshare\config\nxcustom\NX-v12\UGII\materials\oce_material_library.xml";
+                                }
+
+                                if (!File.Exists(custom_library_path)) { log += "         Could not find custom material library path! (" + custom_library_path + ")" + Environment.NewLine; }
+                                targMaterial = targCAEPart.MaterialManager.PhysicalMaterials.LoadFromMatmlLibrary(custom_library_path, boltDefinition.MaterialName);
                                 goto matfound;
                             }
                             catch (Exception) { }
