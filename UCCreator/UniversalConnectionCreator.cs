@@ -101,9 +101,9 @@ namespace UCCreator
                 myStopwatch = new System.Diagnostics.Stopwatch();
 
                 // Set path to GUI .dlx file 
-                //targEnv = TargEnv.Production;
+                targEnv = TargEnv.Production;
                 //targEnv = TargEnv.Debug;
-                targEnv = TargEnv.Siemens;
+                //targEnv = TargEnv.Siemens;
 
                 // Set Curve Searching method
                 targCurveSearching = CurveSearchingMethod.LineOccurrence;
