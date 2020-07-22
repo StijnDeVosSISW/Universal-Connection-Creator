@@ -2105,17 +2105,10 @@ namespace UCCreator
                 {
                     if (RunValidatorAfter)
                     {
-                        //List<System.String> inputArgs = new List<System.String>();
-                        //inputArgs.Add("test");
-                        //inputArgs.Add("test2");
                         List<Object> inputArgs = new List<object>();
-                        //inputArgs.Add(true);
-                        inputArgs.Add("-path=test");
-                        inputArgs.Add("-path=test");
-                        theUI.NXMessageBox.Show("Input arguments", NXMessageBox.DialogType.Information, inputArgs.ToString());
-
-                        theSession.Execute(PathToValidatorExe, "Program", "Main", inputArgs.ToArray());
-                        //theSession.Execute(PathToValidatorExe, "Program", "SetNXstatusMessage", new string[] { "VALIDATOR RUN FROM CREATOR"});
+                        
+                        //theSession.Execute(PathToValidatorExe, "Program", "Main", inputArgs.ToArray());
+                        theSession.Execute(PathToValidatorExe, "Program", "RunFromOtherNXOpenApp", inputArgs.ToArray());
                     }
                 }
                 else
