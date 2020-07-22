@@ -2098,40 +2098,36 @@ namespace UCCreator
         private static void RunValidator()
         {
 
-
-
-            return;
-
-
-
-
             // If desired, run Validator after successful Creator execution
-            if (File.Exists(PathToValidatorExe))
+            if (RunValidatorAfter)
             {
-                if (RunValidatorAfter)
+                if (File.Exists(PathToValidatorExe))
                 {
-                    //List<System.String> inputArgs = new List<System.String>();
-                    //inputArgs.Add("test");
-                    //inputArgs.Add("test2");
-                    List<Object> inputArgs = new List<object>();
-                    //inputArgs.Add(true);
-                    inputArgs.Add("-path=test");
-                    inputArgs.Add("-path=test");
-                    theUI.NXMessageBox.Show("Input arguments", NXMessageBox.DialogType.Information, inputArgs.ToString());
+                    if (RunValidatorAfter)
+                    {
+                        //List<System.String> inputArgs = new List<System.String>();
+                        //inputArgs.Add("test");
+                        //inputArgs.Add("test2");
+                        List<Object> inputArgs = new List<object>();
+                        //inputArgs.Add(true);
+                        inputArgs.Add("-path=test");
+                        inputArgs.Add("-path=test");
+                        theUI.NXMessageBox.Show("Input arguments", NXMessageBox.DialogType.Information, inputArgs.ToString());
 
-                    theSession.Execute(PathToValidatorExe, "Program", "Main", inputArgs.ToArray());
-                    //theSession.Execute(PathToValidatorExe, "Program", "SetNXstatusMessage", new string[] { "VALIDATOR RUN FROM CREATOR"});
+                        theSession.Execute(PathToValidatorExe, "Program", "Main", inputArgs.ToArray());
+                        //theSession.Execute(PathToValidatorExe, "Program", "SetNXstatusMessage", new string[] { "VALIDATOR RUN FROM CREATOR"});
+                    }
                 }
-            }
-            else
-            {
-                theUI.NXMessageBox.Show("Running Validator went wrong:", NXMessageBox.DialogType.Warning, "Could not find Validator executable:" + Environment.NewLine +
-                    Environment.NewLine +
-                    "Target path = " + PathToValidatorExe + Environment.NewLine +
-                    "(Target environment:  " + targEnv.ToString() + ")" + Environment.NewLine +
-                    Environment.NewLine +
-                    "Are you sure this path exists?" + Environment.NewLine +
-                    "If yes, ask Siemens to put in the correct target path for the Validator executable.");
+                else
+                {
+                    theUI.NXMessageBox.Show("Running Validator went wrong:", NXMessageBox.DialogType.Warning, "Could not find Validator executable:" + Environment.NewLine +
+                        Environment.NewLine +
+                        "Target path = " + PathToValidatorExe + Environment.NewLine +
+                        "(Target environment:  " + targEnv.ToString() + ")" + Environment.NewLine +
+                        Environment.NewLine +
+                        "Are you sure this path exists?" + Environment.NewLine +
+                        "If yes, ask Siemens to put in the correct target path for the Validator executable.");
+                }
             }
         }
         #endregion

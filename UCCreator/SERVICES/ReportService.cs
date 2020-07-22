@@ -12,6 +12,7 @@ namespace UCCreator.SERVICES
         private static string _ReportContent = "";
         private static List<string> _ErrorStack = new List<string>();
         private static string _Title = "";
+        private static int ErrorCount = 0;
 
         // VARIABLES
         public static string ReportContent
@@ -60,7 +61,7 @@ namespace UCCreator.SERVICES
         {
             // Get final content
             string output = Environment.NewLine + Environment.NewLine +
-            "PROCESS REPORT" + Environment.NewLine +
+            "PROCESS REPORT:        " + ErrorCount.ToString() + " ERRORS OCCURRED" + Environment.NewLine +
             "--------------" + Environment.NewLine +
             Environment.NewLine;
 
@@ -76,6 +77,7 @@ namespace UCCreator.SERVICES
             // Reset Report Service
             ReportContent = "";
             ErrorStack.Clear();
+            ErrorCount = 0;
 
             // Return final content
             return output;
@@ -106,6 +108,8 @@ namespace UCCreator.SERVICES
                 {
                     Write("[ERROR]  " + error + Environment.NewLine);
                 };
+
+                ErrorCount += ErrorStack.Count;
             }
 
             // Reset ErrorStack
