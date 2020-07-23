@@ -100,10 +100,17 @@ namespace UCCreator
                 lw = theSession.ListingWindow;
                 myStopwatch = new System.Diagnostics.Stopwatch();
 
-                // Set path to GUI .dlx file 
-                targEnv = TargEnv.Production;
-                //targEnv = TargEnv.Debug;
-                //targEnv = TargEnv.Siemens;
+                // Set path to GUI .dlx file
+                if (Environment.GetEnvironmentVariable("UCCREATOR_ENV") == "SIEMENS")
+                {
+                    targEnv = TargEnv.Siemens;
+                }
+                else
+                {
+                    targEnv = TargEnv.Production;
+                    //targEnv = TargEnv.Debug;
+                    //targEnv = TargEnv.Siemens;
+                }
 
                 // Set Curve Searching method
                 targCurveSearching = CurveSearchingMethod.LineOccurrence;
