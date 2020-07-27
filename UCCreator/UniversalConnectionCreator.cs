@@ -44,7 +44,6 @@ namespace UCCreator
         private NXOpen.BlockStyler.Group group1;// Block type: Group
         private NXOpen.BlockStyler.Group group_SavedLists;// Block type: Group
         private NXOpen.BlockStyler.Enumeration enum_SavedLists;// Block type: Enumeration
-        private NXOpen.BlockStyler.Button button_IMPORT_SavedLists;// Block type: Button
         private NXOpen.BlockStyler.Group group;// Block type: Group
         private NXOpen.BlockStyler.FileSelection nativeFileBrowser0;// Block type: NativeFileBrowser'
         private NXOpen.BlockStyler.Button button_IMPORT;// Block type: Button
@@ -285,7 +284,6 @@ namespace UCCreator
                 group1 = (NXOpen.BlockStyler.Group)theDialog.TopBlock.FindBlock("group1");
                 group_SavedLists = (NXOpen.BlockStyler.Group)theDialog.TopBlock.FindBlock("group_SavedLists");
                 enum_SavedLists = (NXOpen.BlockStyler.Enumeration)theDialog.TopBlock.FindBlock("enum_SavedLists");
-                button_IMPORT_SavedLists = (NXOpen.BlockStyler.Button)theDialog.TopBlock.FindBlock("button_IMPORT_SavedLists");
                 group = (NXOpen.BlockStyler.Group)theDialog.TopBlock.FindBlock("group");
                 nativeFileBrowser0 = (NXOpen.BlockStyler.FileSelection)theDialog.TopBlock.FindBlock("nativeFileBrowser0");
                 button_IMPORT = (NXOpen.BlockStyler.Button)theDialog.TopBlock.FindBlock("button_IMPORT");
@@ -381,7 +379,6 @@ namespace UCCreator
 
                 // Initialize GUI
                 nativeFileBrowser0.Path = "";
-                button_IMPORT_SavedLists.Enable = true;
                 enum_SavedLists.SetBalloonTooltipTexts(new string[]{ StoragePath_user, StoragePath_server });
 
                 // Initialize Tree Control (List of predefined Universal Bolt Connections)
@@ -435,10 +432,6 @@ namespace UCCreator
                 }
                 else if (block == enum_SavedLists)
                 {
-                    //---------Enter your code here-----------
-                }
-                else if (block == button_IMPORT_SavedLists)
-                {
                     switch (enum_SavedLists.ValueAsString)
                     {
                         case "Last used by you":
@@ -467,6 +460,36 @@ namespace UCCreator
                             break;
                     }
                 }
+                //else if (block == button_IMPORT_SavedLists)
+                //{
+                //    switch (enum_SavedLists.ValueAsString)
+                //    {
+                //        case "Last used by you":
+                //            if (File.Exists(StoragePath_user))
+                //            {
+                //                ImportStoredBoltDefinitions(StoragePath_user);
+                //            }
+                //            else
+                //            {
+                //                theUI.NXMessageBox.Show("Universal Connection Creator", NXMessageBox.DialogType.Error, "No saved User list found to import!");
+                //            }
+                //            break;
+
+                //        case "Default list":
+                //            if (File.Exists(StoragePath_server))
+                //            {
+                //                ImportStoredBoltDefinitions(StoragePath_server);
+                //            }
+                //            else
+                //            {
+                //                theUI.NXMessageBox.Show("Universal Connection Creator", NXMessageBox.DialogType.Error, "No saved Default list found to import!");
+                //            }
+                //            break;
+
+                //        default:
+                //            break;
+                //    }
+                //}
                 else if (block == nativeFileBrowser0)
                 {
                     button_IMPORT.Enable = false;
