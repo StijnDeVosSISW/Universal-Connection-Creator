@@ -65,6 +65,7 @@ namespace UCCreator
 
         private static List<NXOpen.NXObject> allTargObjects = new List<NXObject>();
         private static List<NXOpen.NXObject> objectsToUpdate = new List<NXObject>();
+        private static List<NXOpen.CAE.Mesh> allMeshes = new List<NXOpen.CAE.Mesh>();
 
         private static string StorageFileName = "UCCreator_SavedBoltDefinitions";  // Name of Excel file in which content of Universal Conn Def tree will be stored for later use
         private static string StoragePath_server = null;
@@ -511,6 +512,8 @@ namespace UCCreator
 
                     ReportService.ProcessErrorStack();
                     lw.WriteFullline(ReportService.GetContent());
+
+                    SetNXstatusMessage("Finished.");
 
                     // Run VALIDATOR, if selected
                     RunValidator();
@@ -1179,6 +1182,17 @@ namespace UCCreator
                 }
 
 
+                // Get all 2D meshes (only unique)
+                allMeshes = allMeshes.Distinct().Where(x => x.GetType().ToString() == "NXOpen.CAE.Mesh2dFree" || x.GetType().ToString() == "NXOpen.CAE.Mesh2d").ToList();
+                log += Environment.NewLine + 
+                    "All 2D MESHES to clean up afterwards: " + Environment.NewLine + 
+                    "   -> # meshes = " + allMeshes.Count.ToString() + Environment.NewLine;
+                foreach (NXOpen.CAE.Mesh mesh in allMeshes)
+                {
+                    log += "    [" + mesh.OwningPart.Name.ToUpper() + "]  " + mesh.Name.ToUpper() + Environment.NewLine;
+                }
+
+
                 ReportService.ProcessErrorStack();
 
                 myStopwatch.Stop();
@@ -1353,6 +1367,7 @@ namespace UCCreator
 
                 int j = 1;
                 tot = objectsToUpdate.Count;
+                System.Diagnostics.Stopwatch localStopwatch = new System.Diagnostics.Stopwatch();
 
                 // Update each modified object
                 foreach (NXObject targObj in objectsToUpdate)
@@ -1360,11 +1375,44 @@ namespace UCCreator
                     SetNXstatusMessage("Updating (A)FEM objects :   " + j.ToString() + @"/" + tot.ToString() + "  (" + Math.Round(((double)j / tot) * 100) + "%)    " +
                         "[" + targObj.Name + "]");
 
+                    localStopwatch.Restart();
                     UpdateCAEObjectConnections((NXOpen.CAE.BaseFemPart)targObj);
+                    localStopwatch.Stop();
+                    log += "   [" + localStopwatch.Elapsed.TotalSeconds.ToString() + " seconds]" + Environment.NewLine;
+
+
+                    //SetNXstatusMessage("MESH CLEAN UP   (A)FEM objects :   " + j.ToString() + @"/" + tot.ToString() + "  (" + Math.Round(((double)j / tot) * 100) + "%)    " +
+                    //    "[" + targObj.Name + "]");
+
+                    //localStopwatch.Restart();
+                    //DoMeshCleanup((NXOpen.CAE.BaseFemPart)targObj);
+                    //localStopwatch.Stop();
+                    //log += "   [" + localStopwatch.Elapsed.TotalSeconds.ToString() + " seconds]" + Environment.NewLine;
 
                     j++;
                 }
 
+                ReportService.ProcessErrorStack();
+
+                myStopwatch.Stop();
+                log += "[" + myStopwatch.Elapsed.TotalSeconds.ToString() + " seconds]" + Environment.NewLine;
+                ExecutionTimes.Add(myStopwatch.Elapsed.TotalSeconds);
+                #endregion
+
+
+                #region PERFORM MESH CLEAN UP
+                // -------------------------
+                // PERFORM MESH CLEAN UP
+                // -------------------------
+                myStopwatch.Restart();
+                log += Environment.NewLine +
+                    " ----------------------- " + Environment.NewLine +
+                    "| Perform Mesh Clean Up |" + Environment.NewLine +
+                    " ----------------------- " + Environment.NewLine;
+                ReportService.SetTitle("PERFORM MESH CLEAN UP");
+
+                DoMeshCleanup();
+                
                 ReportService.ProcessErrorStack();
 
                 myStopwatch.Stop();
@@ -1387,7 +1435,8 @@ namespace UCCreator
                     "CREATE LIST OF PREDEFINED BOLT CONNECTIONS =  " + ExecutionTimes[0].ToString() + " seconds" + Environment.NewLine +
                     "GATHER ALL (A)FEM OBJECTS TO PROCESS       =  " + ExecutionTimes[1].ToString() + " seconds" + Environment.NewLine +
                     "PROCESS EACH (A)FEM OBJECT                 =  " + ExecutionTimes[2].ToString() + " seconds" + Environment.NewLine +
-                    "UPDATE EACH (A)FEM OBJECT                  =  " + ExecutionTimes[3].ToString() + " seconds" + Environment.NewLine;
+                    "UPDATE EACH (A)FEM OBJECT                  =  " + ExecutionTimes[3].ToString() + " seconds" + Environment.NewLine +
+                    "PERFORM MESH CLEAN UP                      =  " + ExecutionTimes[4].ToString() + " seconds" + Environment.NewLine;
             }
             catch (Exception e)
             {
@@ -1411,6 +1460,7 @@ namespace UCCreator
         {
             log += "(AFEM) : " + myAFEM.Name.ToString() + Environment.NewLine;
 
+            // Add to target objects list
             allTargObjects.Add(myAFEM);
 
             if (ProcessAll)
@@ -1486,7 +1536,11 @@ namespace UCCreator
         {
             log += "(FEM)  : " + myFEM.Name.ToString() + Environment.NewLine; 
 
+            // Add to target objects list
             allTargObjects.Add(myFEM);
+
+            // Add its meshes to all meshes list
+            allMeshes.AddRange(myFEM.BaseFEModel.MeshManager.GetMeshes());
         }
 
 
@@ -1672,7 +1726,7 @@ namespace UCCreator
                     ? myAFEM.BaseFEModel.ConnectionsContainer.GetAllConnections().Select(x => x.Name).ToList()
                     : myFEM.BaseFEModel.ConnectionsContainer.GetAllConnections().Select(x => x.Name).ToList();
 
-
+                
                 //foreach (string connName in existingUnivConnNames)
                 //{
                 //    log += "      Existing Connection:  " + connName + Environment.NewLine;
@@ -1959,6 +2013,62 @@ namespace UCCreator
             // Update AFEM to realize all Universal Bolt Connections
             myCAEpart.BaseFEModel.UpdateFemodel();
             log += "      UPDATED:  " + myCAEpart.Name.ToUpper() + Environment.NewLine;
+        }
+
+
+        /// <summary>
+        /// Will clean up 2D meshes in target FEM by suppressing holes of Bolt connections
+        /// </summary>
+        /// <param name="myFEM"></param>
+        private static void DoMeshCleanup()
+        {
+            log += Environment.NewLine +
+                "   PERFORM MESH CLEANUP" + Environment.NewLine + Environment.NewLine;
+
+            double i = 1;
+            double tot = allMeshes.Count;
+
+            // Loop through all 2D meshes
+            foreach (NXOpen.CAE.Mesh2d mesh2d in allMeshes)
+            {
+                SetNXstatusMessage("CLEANING UP MESHES :   " + i.ToString() + @"/" + tot.ToString() + "  (" + Math.Round(((double)i / tot) * 100) + "%)    ");
+
+                // Initializations
+                NXOpen.CAE.FemPart myFEM = (NXOpen.CAE.FemPart)mesh2d.OwningPart;
+                NXOpen.CAE.MeshManager myMeshManager = (NXOpen.CAE.MeshManager)myFEM.BaseFEModel.MeshManager;
+
+                log += "      MESH:  " + mesh2d.Name + "   [(A)FEM:  " + myFEM.Name + "]" + Environment.NewLine;
+
+                try
+                {
+                    // Set target (A)FEM to working
+                    if (theSession.Parts.BaseWork.Tag != myFEM.Tag) { theSession.Parts.SetWork(myFEM); log += "      --> MADE WORKING" + Environment.NewLine; }
+
+                    // Open mesh 2D builder
+                    NXOpen.CAE.Mesh2dBuilder myMesh2Dbuilder = myMeshManager.CreateMesh2dBuilder(mesh2d);
+
+                    // Configure mesh 2D builder
+                    NXOpen.Unit MillimeterUnit = (NXOpen.Unit)myFEM.UnitCollection.FindObject("MilliMeter");
+                    myMesh2Dbuilder.PropertyTable.SetBooleanPropertyValue("suppress hole option bool", true);
+                    myMesh2Dbuilder.PropertyTable.SetBaseScalarWithDataPropertyValue("hole diameter tolerance", "20", MillimeterUnit);
+                    myMesh2Dbuilder.PropertyTable.SetIntegerPropertyValue("hole suppresion point type", 2);
+
+                    // Apply modifications
+                    myMesh2Dbuilder.Commit();
+
+                    // Clean up mesh builder itself
+                    myMesh2Dbuilder.Destroy();
+                }
+                catch (Exception e)
+                {
+                    log += "      " + mesh2d.Name + " :  something went wrong while trying to do mesh cleanup" + Environment.NewLine +
+                        e.ToString();
+                    ReportService.AddErrorMsg("MESH CLEANUP - [(A)FEM:  " + myFEM.Name + "]  [MESH:  " + mesh2d.Name + "] :  something went wrong while trying to perform mesh cleanup" + Environment.NewLine +
+                        e.ToString());
+                }
+
+                i++;
+            }
         }
 
 
