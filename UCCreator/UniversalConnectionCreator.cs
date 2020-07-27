@@ -115,21 +115,25 @@ namespace UCCreator
                 // Set Curve Searching method
                 targCurveSearching = CurveSearchingMethod.LineOccurrence;
 
+                // Get correct path to Validator dll
+                PathToValidatorExe = GetValidatorPath(targEnv);
+
+                // Get environment dependent variables
                 switch (targEnv)
                 {
                     case TargEnv.Production:
                         theDlxFileName = @"D:\NX\CAE\UBC\ABC\UniversalConnectionCreator\UniversalConnectionCreator.dlx";  // IN CPP TC environment as Production tool
-                        PathToValidatorExe = @"D:\NX\CAE\UBC\ABC\UniversalConnectionValidator\UCValidator.dll";
+                        //PathToValidatorExe = @"D:\NX\CAE\UBC\ABC\UniversalConnectionValidator\UCValidator.dll";
                         targReferenceSet = "CAE";
                         break;
                     case TargEnv.Debug:
                         theDlxFileName = @"C:\sdevos\ABC NXOpen applications\ABC applications\application\UniversalConnectionCreator.dlx";  // Debug by Stijn in CPP TC environment
-                        PathToValidatorExe = @"C:\sdevos\ABC NXOpen applications\ABC applications\application\UCValidator.dll";
+                        //PathToValidatorExe = @"C:\sdevos\ABC NXOpen applications\ABC applications\application\UCValidator.dll";
                         targReferenceSet = "CAE";
                         break;
                     case TargEnv.Siemens:
                         theDlxFileName = "UniversalConnectionCreator.dlx";  // In Siemens TC environment
-                        PathToValidatorExe = @"D:\3__TEAMCENTER\2_Projects\2_OCE_TCSimRollOut\4_Automatic_Bolt_Connections__Part_Families\UNIVERSAL CONNECTION VALIDATER\INSTALL\UniversalConnectionValidater\application\UCValidator.dll";
+                        //PathToValidatorExe = @"D:\3__TEAMCENTER\2_Projects\2_OCE_TCSimRollOut\4_Automatic_Bolt_Connections__Part_Families\UNIVERSAL CONNECTION VALIDATER\INSTALL\UniversalConnectionValidater\application\UCValidator.dll";
                         targReferenceSet = "Entire Part";
                         break;
                     default:
@@ -2129,6 +2133,43 @@ namespace UCCreator
                         "If yes, ask Siemens to put in the correct target path for the Validator executable.");
                 }
             }
+        }
+
+
+        /// <summary>
+        /// Get correct path to the Validator dll file, depending on the environment in which the Creator is being executed
+        /// </summary>
+        /// <param name="env">Environment in which the Creator is being executed</param>
+        /// <returns>Correct path to the Validator dll file</returns>
+        private static string GetValidatorPath(TargEnv env)
+        {
+            string ValidatorPath = "";
+
+            switch (env)
+            {
+                case TargEnv.Production:
+                    string PLMHOST = Environment.GetEnvironmentVariable("PLMHOST");
+                    log += "PLMHOST = " + PLMHOST + Environment.NewLine;
+                    string NXVERSION = theSession.GetEnvironmentVariableValue("UGII_VERSION");
+                    log += "NXVERSION = " + NXVERSION + Environment.NewLine + Environment.NewLine;
+
+                    ValidatorPath = PLMHOST + @"\plmshare\config\nxcustom\NX-" + NXVERSION + @"\site\application\UCValidator.dll";
+                    //ValidatorPath = @"D:\NX\CAE\UBC\ABC\UniversalConnectionValidator\UCValidator.dll"; ;
+                    break;
+
+                case TargEnv.Debug:
+                    ValidatorPath = @"C:\sdevos\ABC NXOpen applications\ABC applications\application\UCValidator.dll";
+                    break;
+
+                case TargEnv.Siemens:
+                    ValidatorPath = @"D:\3__TEAMCENTER\2_Projects\2_OCE_TCSimRollOut\4_Automatic_Bolt_Connections__Part_Families\UNIVERSAL CONNECTION VALIDATER\INSTALL\UniversalConnectionValidater\application\UCValidator.dll";
+                    break;
+
+                default:
+                    break;
+            }
+
+            return ValidatorPath;
         }
         #endregion
     }
