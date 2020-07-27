@@ -1207,7 +1207,8 @@ namespace UCCreator
                 bool SelRecipesHaveCurves = false;
 
                 System.Diagnostics.Stopwatch detailStopwatch = new System.Diagnostics.Stopwatch();
-
+                
+                // LOOP THROUGH ALL CAE OBJECTS
                 foreach (NXObject targObj in allTargObjects)
                 {
                     // Initializations
@@ -1230,25 +1231,28 @@ namespace UCCreator
                     if (isFEM) { log += "---> Recognized as FEM" + Environment.NewLine; }
                     else { log += "---> Recognized as AFEM" + Environment.NewLine; }
 
-                    // If target object is a FEM, check if FEMs should be processed or not
-                    if (isFEM && ProcessAll)
-                    {
-                        log += "---> Current run is processing Assembly FEM levels only:   SKIPPED" + Environment.NewLine;
-                        ReportService.ProcessErrorStack();
-                        continue;
-                    }
-
-                    // If MONO-FEM scenario (FEM object and Only This Level)
-                    if (isFEM && !ProcessAll)
+                    // If FEM object, then make sure CAE curves are made available
+                    //if (isFEM && !ProcessAll)
+                    if (isFEM)
                     {
                         // Initialize
                         NXOpen.CAE.FemPart myFEM = (NXOpen.CAE.FemPart)targObj;
 
                         // Replace Reference Set
-                        ReplaceReferenceSet(myFEM);
+                        if (ReplaceReferenceSet(myFEM))
+                        {
+                            // Make sure Geometry Options are set correctly (so that Curve objects are propagated to the FEM level)
+                            SetFEMGeometryOptions(myFEM);
+                        }
+                    }
 
-                        // Make sure Geometry Options are set correctly (so that Curve objects are propagated to the FEM level)
-                        SetFEMGeometryOptions(myFEM);
+                    // If target object is a FEM, check if FEMs should be processed or not
+                    if (isFEM && ProcessAll && i>1)  // Include i>1 condition, so that mono-FEM objects can be processed with the all levels command as well
+                    {
+                        log += Environment.NewLine + 
+                            "---> Current run is processing Assembly FEM levels only:   SKIPPED" + Environment.NewLine;
+                        ReportService.ProcessErrorStack();
+                        continue;
                     }
 
                     // Check if target object has any curves at all for Bolt connections
@@ -2013,11 +2017,13 @@ namespace UCCreator
         /// Replaces the References Set of the target FEM object to the "CAE" Reference Set
         /// </summary>
         /// <param name="myFEM">Target FEM object</param>
-        private static void ReplaceReferenceSet(NXOpen.CAE.FemPart myFEM)
+        private static bool ReplaceReferenceSet(NXOpen.CAE.FemPart myFEM)
         {
             log += Environment.NewLine +
                 "   REPLACE REFERENCE SET" + Environment.NewLine +
                 "   ---------------------" + Environment.NewLine;
+
+            bool IsSuccess = false;
 
             try
             {
@@ -2029,17 +2035,19 @@ namespace UCCreator
                 // Get all underlying Components to change the Reference Set for
                 targComponents = GetAllComponents(myFEM.IdealizedPart.ComponentAssembly.RootComponent, targComponents);
 
-                log += "      Target components:" + Environment.NewLine;
-                foreach (NXOpen.Assemblies.Component component in targComponents)
-                {
-                    log += "         " + component.Name.ToUpper() + Environment.NewLine;
-                }
+                //log += "      Target components:" + Environment.NewLine;
+                //foreach (NXOpen.Assemblies.Component component in targComponents)
+                //{
+                //    log += "         " + component.Name.ToUpper() + Environment.NewLine;
+                //}
 
                 // Change the Reference Set of each target component to the "CAE" Reference Set
                 NXOpen.ErrorList errorList = myFEM.ComponentAssembly.ReplaceReferenceSetInOwners(targReferenceSet, targComponents.ToArray());
                 errorList.Dispose();
 
                 log += "      Changed Reference Set to:   " + targReferenceSet + Environment.NewLine;
+
+                IsSuccess = true;
             }
             catch (Exception e)
             {
@@ -2049,7 +2057,11 @@ namespace UCCreator
 
                 ReportService.AddErrorMsg(" {" + myFEM.Name.ToUpper() + "}  Are you sure the underlying Idealized Geometry and CAD data are loaded?" + Environment.NewLine + 
                     e.ToString());
+
+                IsSuccess = false;
             }
+
+            return IsSuccess;
         }
 
 
