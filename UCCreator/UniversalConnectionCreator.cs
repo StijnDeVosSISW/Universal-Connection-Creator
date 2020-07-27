@@ -2027,7 +2027,7 @@ namespace UCCreator
                 //string targReferenceSet = "CAE";
 
                 // Get all underlying Components to change the Reference Set for
-                targComponents = GetAllComponents(myFEM.MasterCadPart.ComponentAssembly.RootComponent, targComponents);
+                targComponents = GetAllComponents(myFEM.IdealizedPart.ComponentAssembly.RootComponent, targComponents);
 
                 log += "      Target components:" + Environment.NewLine;
                 foreach (NXOpen.Assemblies.Component component in targComponents)
