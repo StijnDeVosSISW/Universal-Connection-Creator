@@ -2052,23 +2052,35 @@ namespace UCCreator
             {
                 // Initializations
                 List<NXOpen.Assemblies.Component> targComponents = new List<NXOpen.Assemblies.Component>();
-                //string targReferenceSet = "Entire Part";  --> Moved to Global Variables
-                //string targReferenceSet = "CAE";
 
                 // Get all underlying Components to change the Reference Set for
                 targComponents = GetAllComponents(myFEM.IdealizedPart.ComponentAssembly.RootComponent, targComponents);
-
-                //log += "      Target components:" + Environment.NewLine;
-                //foreach (NXOpen.Assemblies.Component component in targComponents)
-                //{
-                //    log += "         " + component.Name.ToUpper() + Environment.NewLine;
-                //}
 
                 // Change the Reference Set of each target component to the "CAE" Reference Set
                 NXOpen.ErrorList errorList = myFEM.ComponentAssembly.ReplaceReferenceSetInOwners(targReferenceSet, targComponents.ToArray());
                 errorList.Dispose();
 
-                log += "      Changed Reference Set to:   " + targReferenceSet + Environment.NewLine;
+                log += "      Changed IDEALIZED Reference Set to:   " + targReferenceSet + Environment.NewLine;
+
+                // Change Reference Set of underlying CAD back to "Model"
+                try
+                {
+                    // Get CAD components
+                    List<NXOpen.Assemblies.Component> CADcomponents = new List<NXOpen.Assemblies.Component>();
+                    CADcomponents = GetAllComponents(myFEM.MasterCadPart.ComponentAssembly.RootComponent, CADcomponents);
+
+                    // Change Reference Set to "Model"
+                    NXOpen.ErrorList errorList2 = myFEM.ComponentAssembly.ReplaceReferenceSetInOwners("MODEL", CADcomponents.ToArray());
+                    errorList2.Dispose();
+
+                    log += "      RESTORED CAD Reference Set to:   Model" + Environment.NewLine;
+                }
+                catch (Exception ex)
+                {
+                    log += "      FAILED TO RESTORE CAD Reference Set to:   Model" + Environment.NewLine;
+                    ReportService.AddErrorMsg(" {" + myFEM.Name.ToUpper() + "}  FAILED TO RESTORE CAD Reference Set to:   Model" + Environment.NewLine +
+                    ex.ToString());
+                }
 
                 IsSuccess = true;
             }
