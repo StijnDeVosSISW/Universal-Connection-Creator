@@ -1093,7 +1093,7 @@ namespace UCCreator
                 myStopwatch.Restart();
                 log += Environment.NewLine + Environment.NewLine +
                     " -------------------------------------------- " + Environment.NewLine +
-                    "| Create list of Predefined Bolt Connections |" + Environment.NewLine +
+                    "| CREATE LIST OF PREDEFINED BOLT CONNECTIONS |" + Environment.NewLine +
                     " -------------------------------------------- " + Environment.NewLine;
 
                 log += "Generate list of predefined Bolt Connections..." + Environment.NewLine;
@@ -1131,9 +1131,9 @@ namespace UCCreator
                 // ------------------------------------
                 myStopwatch.Restart();
                 log += Environment.NewLine +
-                    " --------------------------- " + Environment.NewLine +
-                    "| Gather all (A)FEM objects |" + Environment.NewLine +
-                    " --------------------------- " + Environment.NewLine;
+                    " -------------------------------------- " + Environment.NewLine +
+                    "| GATHER ALL (A)FEM OBJECTS TO PROCESS |" + Environment.NewLine +
+                    " -------------------------------------- " + Environment.NewLine;
 
                 ReportService.SetTitle("GATHER ALL (A)FEM OBJECTS TO PROCESS");
 
@@ -1224,6 +1224,40 @@ namespace UCCreator
                 #endregion
 
 
+                #region MAKE CAE CURVES AVAILABLE
+                // --------------------------
+                // MAKE CAE CURVES AVAILABLE
+                // --------------------------
+                myStopwatch.Restart();
+                log += Environment.NewLine +
+                    " --------------------------- " + Environment.NewLine +
+                    "| MAKE CAE CURVES AVAILABLE |" + Environment.NewLine +
+                    " --------------------------- " + Environment.NewLine;
+                ReportService.SetTitle("MAKE CAE CURVES AVAILABLE");
+
+                // Make CAE Curves available in each FEM object
+                NXOpen.NXObject[] allFEMobjects = allTargObjects.Where(x => x.GetType().ToString() == "NXOpen.CAE.FemPart").ToArray();
+                double k = 0;
+                double count = allFEMobjects.Length;
+                foreach (NXOpen.NXObject nXObject in allFEMobjects)
+                {
+                    NXOpen.CAE.FemPart fem = (NXOpen.CAE.FemPart)nXObject;
+
+                    MakeCAECurvesAvailable(fem);
+
+                    k++;
+
+                    log += "   FEM: " + fem.Name + "   : OK";
+                    SetNXstatusMessage("Making CAE Curves available in each FEM object : " + k.ToString() + @"/" + count.ToString() + "  (" + Math.Round(k/count, 0) + "%");
+                }
+
+                myStopwatch.Stop();
+                log += Environment.NewLine +
+                    "[" + myStopwatch.Elapsed.TotalSeconds.ToString() + " seconds]" + Environment.NewLine;
+                ExecutionTimes.Add(myStopwatch.Elapsed.TotalSeconds);
+                #endregion
+
+
                 #region PROCESS EACH (A)FEM OBJECT
                 // --------------------------
                 // PROCESS EACH (A)FEM OBJECT
@@ -1231,7 +1265,7 @@ namespace UCCreator
                 myStopwatch.Restart();
                 log += Environment.NewLine +
                     " ---------------------------- " + Environment.NewLine +
-                    "| Process each (A)FEM object |" + Environment.NewLine +
+                    "| PROCESS EACH (A)FEM OBJECT |" + Environment.NewLine +
                     " ---------------------------- " + Environment.NewLine;
                 ReportService.SetTitle("PROCESS EACH (A)FEM OBJECT");
                 int i = 1;
@@ -1263,23 +1297,23 @@ namespace UCCreator
                     if (isFEM) { log += "---> Recognized as FEM" + Environment.NewLine; }
                     else { log += "---> Recognized as AFEM" + Environment.NewLine; }
 
-                    // If FEM object, then make sure CAE curves are made available
-                    //if (isFEM && !ProcessAll)
-                    if (isFEM)
-                    {
-                        // Initialize
-                        NXOpen.CAE.FemPart myFEM = (NXOpen.CAE.FemPart)targObj;
+                    //// If FEM object, then make sure CAE curves are made available  --> MOVED UP
+                    ////if (isFEM && !ProcessAll)
+                    //if (isFEM)
+                    //{
+                    //    // Initialize
+                    //    NXOpen.CAE.FemPart myFEM = (NXOpen.CAE.FemPart)targObj;
 
-                        // Replace Reference Set
-                        if (ReplaceReferenceSet(myFEM))
-                        {
-                            // Make sure Geometry Options are set correctly (so that Curve objects are propagated to the FEM level)
-                            SetFEMGeometryOptions(myFEM);
+                    //    // Replace Reference Set
+                    //    if (ReplaceReferenceSet(myFEM))
+                    //    {
+                    //        // Make sure Geometry Options are set correctly (so that Curve objects are propagated to the FEM level)
+                    //        SetFEMGeometryOptions(myFEM);
 
-                            // Restore Reference Set of underlying CAD
-                            RestoreCADReferenceSet(myFEM);
-                        }
-                    }
+                    //        // Restore Reference Set of underlying CAD
+                    //        RestoreCADReferenceSet(myFEM);
+                    //    }
+                    //}
 
                     // If target object is a FEM, check if FEMs should be processed or not
                     if (isFEM && ProcessAll && i>1)  // Include i>1 condition, so that mono-FEM objects can be processed with the all levels command as well
@@ -1386,9 +1420,9 @@ namespace UCCreator
                 // -------------------------
                 myStopwatch.Restart();
                 log += Environment.NewLine +
-                    " ------------------------------------------------ " + Environment.NewLine +
-                    "| Update (A)FEM objects that have pending update |" + Environment.NewLine +
-                    " ------------------------------------------------ " + Environment.NewLine;
+                    " --------------------------- " + Environment.NewLine +
+                    "| UPDATE EACH (A)FEM OBJECT |" + Environment.NewLine +
+                    " --------------------------- " + Environment.NewLine;
                 ReportService.SetTitle("UPDATE EACH (A)FEM OBJECT");
 
                 // Reverse order of list of object to update, to make sure that the updating happens bottom-up
@@ -1429,8 +1463,9 @@ namespace UCCreator
                     "-----------" + Environment.NewLine +
                     "CREATE LIST OF PREDEFINED BOLT CONNECTIONS =  " + ExecutionTimes[0].ToString() + " seconds" + Environment.NewLine +
                     "GATHER ALL (A)FEM OBJECTS TO PROCESS       =  " + ExecutionTimes[1].ToString() + " seconds" + Environment.NewLine +
-                    "PROCESS EACH (A)FEM OBJECT                 =  " + ExecutionTimes[2].ToString() + " seconds" + Environment.NewLine +
-                    "UPDATE EACH (A)FEM OBJECT                  =  " + ExecutionTimes[3].ToString() + " seconds" + Environment.NewLine;
+                    "MAKE CAE CURVES AVAILABLE                  =  " + ExecutionTimes[2].ToString() + " seconds" + Environment.NewLine +
+                    "PROCESS EACH (A)FEM OBJECT                 =  " + ExecutionTimes[3].ToString() + " seconds" + Environment.NewLine +
+                    "UPDATE EACH (A)FEM OBJECT                  =  " + ExecutionTimes[4].ToString() + " seconds" + Environment.NewLine;
             }
             catch (Exception e)
             {
@@ -2055,9 +2090,9 @@ namespace UCCreator
         /// <param name="myFEM">Target FEM object</param>
         private static bool ReplaceReferenceSet(NXOpen.CAE.FemPart myFEM)
         {
-            log += Environment.NewLine +
-                "   REPLACE REFERENCE SET" + Environment.NewLine +
-                "   ---------------------" + Environment.NewLine;
+            //log += Environment.NewLine +
+            //    "   REPLACE REFERENCE SET" + Environment.NewLine +
+            //    "   ---------------------" + Environment.NewLine;
 
             bool IsSuccess = false;
 
@@ -2066,6 +2101,13 @@ namespace UCCreator
                 // Initializations
                 List<NXOpen.Assemblies.Component> targComponents = new List<NXOpen.Assemblies.Component>();
 
+                // Make sure Idealized Part is loaded
+                if (myFEM.IdealizedPart == null)
+                {
+                    log += "      Idealized Part could not be found -> SKIPPED" + Environment.NewLine;
+                    return false;
+                }
+                
                 // Get all underlying Components to change the Reference Set for
                 targComponents = GetAllComponents(myFEM.IdealizedPart.ComponentAssembly.RootComponent, targComponents);
 
@@ -2073,7 +2115,7 @@ namespace UCCreator
                 NXOpen.ErrorList errorList = myFEM.ComponentAssembly.ReplaceReferenceSetInOwners(targReferenceSet, targComponents.ToArray());
                 errorList.Dispose();
 
-                log += "      Changed IDEALIZED Reference Set to:   " + targReferenceSet + Environment.NewLine;
+                //log += "      Changed IDEALIZED Reference Set to:   " + targReferenceSet + Environment.NewLine;
 
                 IsSuccess = true;
             }
@@ -2100,9 +2142,10 @@ namespace UCCreator
         private static void RestoreCADReferenceSet(NXOpen.CAE.FemPart myFEM)
         {
             // Change Reference Set of underlying CAD back to "Model"
-            log += Environment.NewLine +
-                "   RESTORE CAD REFERENCE SET" + Environment.NewLine +
-                "   -------------------------" + Environment.NewLine;
+
+            //log += Environment.NewLine +
+            //    "   RESTORE CAD REFERENCE SET" + Environment.NewLine +
+            //    "   -------------------------" + Environment.NewLine;
 
             try
             {
@@ -2114,7 +2157,7 @@ namespace UCCreator
                 NXOpen.ErrorList errorList2 = myFEM.ComponentAssembly.ReplaceReferenceSetInOwners("MODEL", CADcomponents.ToArray());
                 errorList2.Dispose();
 
-                log += "      RESTORED CAD Reference Set to:   Model" + Environment.NewLine;
+                //log += "      RESTORED CAD Reference Set to:   Model" + Environment.NewLine;
             }
             catch (Exception ex)
             {
@@ -2151,9 +2194,9 @@ namespace UCCreator
         /// <param name="targFEM">Target FEM object</param>
         private static void SetFEMGeometryOptions(NXOpen.CAE.FemPart targFEM)
         {
-            log += Environment.NewLine +
-                "   SET GEOMETRY OPTIONS" + Environment.NewLine +
-                "   --------------------" + Environment.NewLine;
+            //log += Environment.NewLine +
+            //    "   SET GEOMETRY OPTIONS" + Environment.NewLine +
+            //    "   --------------------" + Environment.NewLine;
 
             // Get current FEM Geometry options
             NXOpen.CAE.FemPart.UseBodiesOption init_useBodiesOption;
@@ -2185,7 +2228,25 @@ namespace UCCreator
             targFEM.SetGeometryData(NXOpen.CAE.FemPart.UseBodiesOption.VisibleBodies, init_Bodies, targFemSynchronizeOptions);
             //targFEM.SetGeometryData(NXOpen.CAE.FemPart.UseBodiesOption.VisibleBodies, visibleBodies.ToArray(), targFemSynchronizeOptions);
 
-            log += "      Set to: LINES & SKETCH CURVES" + Environment.NewLine;
+            //log += "      Set to: LINES & SKETCH CURVES" + Environment.NewLine;
+        }
+
+
+        /// <summary>
+        /// Makes all CAE Curves of underlying CAD available on target FEM level
+        /// </summary>
+        /// <param name="myFEM">Target FEM level</param>
+        private static void MakeCAECurvesAvailable(NXOpen.CAE.FemPart myFEM)
+        {
+            // Replace Reference Set
+            if (ReplaceReferenceSet(myFEM))
+            {
+                // Make sure Geometry Options are set correctly (so that Curve objects are propagated to the FEM level)
+                SetFEMGeometryOptions(myFEM);
+
+                // Restore Reference Set of underlying CAD
+                RestoreCADReferenceSet(myFEM);
+            }
         }
 
 
