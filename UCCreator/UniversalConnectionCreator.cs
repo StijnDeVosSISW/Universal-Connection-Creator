@@ -753,6 +753,7 @@ namespace UCCreator
             theUfSession.Ui.SetPrompt("ABC CREATOR | " + msg);
         }
 
+
         /// <summary>
         /// Write to log content
         /// </summary>
@@ -761,6 +762,7 @@ namespace UCCreator
         {
             log += msg + Environment.NewLine;
         }
+
 
         /// <summary>
         /// Hides all objects in the NX/SC session
@@ -771,6 +773,7 @@ namespace UCCreator
             theSession.UpdateManager.DoUpdate(new Session.UndoMarkId());
         }
 
+
         /// <summary>
         /// Shows all objects in the NX/SC session
         /// </summary>
@@ -779,6 +782,7 @@ namespace UCCreator
             theSession.DisplayManager.ShowByType("SHOW_HIDE_TYPE_ALL", NXOpen.DisplayManager.ShowHideScope.AnyInAssembly);
             theSession.UpdateManager.DoUpdate(new Session.UndoMarkId());
         }
+
 
         /// <summary>
         /// Import predefined Bolt Definitions from an Excel file
@@ -865,6 +869,7 @@ namespace UCCreator
                     e.ToString() + Environment.NewLine;
             }
         }
+
 
         /// <summary>
         /// Import last used Bolt Definitions, stored by the previous session
@@ -977,6 +982,7 @@ namespace UCCreator
             }
         }
 
+
         /// <summary>
         /// Store current Universal Bolt Connection definitions in an Excel file
         /// </summary>
@@ -1033,6 +1039,7 @@ namespace UCCreator
             }
         }
 
+
         /// <summary>
         /// Updates value of ProcessAll, based on input coming from GUI
         /// </summary>
@@ -1057,6 +1064,7 @@ namespace UCCreator
             }
         }
 
+
         /// <summary>
         /// Updates value of RunValidatorAfter, based on input coming from GUI
         /// </summary>
@@ -1064,6 +1072,7 @@ namespace UCCreator
         {
             RunValidatorAfter = toggle_Validator.Value;
         }
+
 
         /// <summary>
         /// Start Bolt generation execution
@@ -1266,6 +1275,9 @@ namespace UCCreator
                         {
                             // Make sure Geometry Options are set correctly (so that Curve objects are propagated to the FEM level)
                             SetFEMGeometryOptions(myFEM);
+
+                            // Restore Reference Set of underlying CAD
+                            RestoreCADReferenceSet(myFEM);
                         }
                     }
 
@@ -1433,6 +1445,7 @@ namespace UCCreator
                 lw.Open();
             }
         }
+
 
         /// <summary>
         /// Process target AFEM object and optionally loop through its child components
@@ -2062,26 +2075,6 @@ namespace UCCreator
 
                 log += "      Changed IDEALIZED Reference Set to:   " + targReferenceSet + Environment.NewLine;
 
-                // Change Reference Set of underlying CAD back to "Model"
-                try
-                {
-                    // Get CAD components
-                    List<NXOpen.Assemblies.Component> CADcomponents = new List<NXOpen.Assemblies.Component>();
-                    CADcomponents = GetAllComponents(myFEM.MasterCadPart.ComponentAssembly.RootComponent, CADcomponents);
-
-                    // Change Reference Set to "Model"
-                    NXOpen.ErrorList errorList2 = myFEM.ComponentAssembly.ReplaceReferenceSetInOwners("MODEL", CADcomponents.ToArray());
-                    errorList2.Dispose();
-
-                    log += "      RESTORED CAD Reference Set to:   Model" + Environment.NewLine;
-                }
-                catch (Exception ex)
-                {
-                    log += "      FAILED TO RESTORE CAD Reference Set to:   Model" + Environment.NewLine;
-                    ReportService.AddErrorMsg(" {" + myFEM.Name.ToUpper() + "}  FAILED TO RESTORE CAD Reference Set to:   Model" + Environment.NewLine +
-                    ex.ToString());
-                }
-
                 IsSuccess = true;
             }
             catch (Exception e)
@@ -2097,6 +2090,38 @@ namespace UCCreator
             }
 
             return IsSuccess;
+        }
+
+
+        /// <summary>
+        /// Restores Reference Set of underlying CAD objects to "Model"
+        /// </summary>
+        /// <param name="myFEM"></param>
+        private static void RestoreCADReferenceSet(NXOpen.CAE.FemPart myFEM)
+        {
+            // Change Reference Set of underlying CAD back to "Model"
+            log += Environment.NewLine +
+                "   RESTORE CAD REFERENCE SET" + Environment.NewLine +
+                "   -------------------------" + Environment.NewLine;
+
+            try
+            {
+                // Get CAD components
+                List<NXOpen.Assemblies.Component> CADcomponents = new List<NXOpen.Assemblies.Component>();
+                CADcomponents = GetAllComponents(myFEM.MasterCadPart.ComponentAssembly.RootComponent, CADcomponents);
+
+                // Change Reference Set to "Model"
+                NXOpen.ErrorList errorList2 = myFEM.ComponentAssembly.ReplaceReferenceSetInOwners("MODEL", CADcomponents.ToArray());
+                errorList2.Dispose();
+
+                log += "      RESTORED CAD Reference Set to:   Model" + Environment.NewLine;
+            }
+            catch (Exception ex)
+            {
+                log += "      FAILED TO RESTORE CAD Reference Set to:   Model" + Environment.NewLine;
+                ReportService.AddErrorMsg(" {" + myFEM.Name.ToUpper() + "}  FAILED TO RESTORE CAD Reference Set to:   Model" + Environment.NewLine +
+                ex.ToString());
+            }
         }
 
 
@@ -2130,7 +2155,21 @@ namespace UCCreator
                 "   SET GEOMETRY OPTIONS" + Environment.NewLine +
                 "   --------------------" + Environment.NewLine;
 
-            // Create FemSynchronizeOptions
+            // Get current FEM Geometry options
+            NXOpen.CAE.FemPart.UseBodiesOption init_useBodiesOption;
+            NXOpen.Body[] init_Bodies;
+            NXOpen.CAE.FemSynchronizeOptions init_femSynchronizeOptions;
+
+            targFEM.GetGeometryData(out init_useBodiesOption, out init_Bodies, out init_femSynchronizeOptions);
+
+            //log += "      INITIAL bodies:  " + Environment.NewLine;
+            //foreach (NXOpen.Body body in init_Bodies)
+            //{
+            //    log += "         INITIAL Body :  " + body.Name + Environment.NewLine;
+            //}
+
+
+            // Create new FemSynchronizeOptions
             NXOpen.CAE.FemSynchronizeOptions targFemSynchronizeOptions = targFEM.NewFemSynchronizeOptions();
 
             // Configure FemSynchronizeOptions
@@ -2143,10 +2182,10 @@ namespace UCCreator
             targFemSynchronizeOptions.SynchronizeSketchCurvesFlag = true;
 
             // Assign FemSynchronizeOptions in Geometry Data settings
-            List<Body> targBodies = new List<Body>();
-            targFEM.SetGeometryData(NXOpen.CAE.FemPart.UseBodiesOption.AllBodies, targBodies.ToArray(), targFemSynchronizeOptions);
+            targFEM.SetGeometryData(NXOpen.CAE.FemPart.UseBodiesOption.VisibleBodies, init_Bodies, targFemSynchronizeOptions);
+            //targFEM.SetGeometryData(NXOpen.CAE.FemPart.UseBodiesOption.VisibleBodies, visibleBodies.ToArray(), targFemSynchronizeOptions);
 
-            log += "      Set to: LINES, ARCS & CIRCLES, SPLINES, CONICS, SKETCH CURVES" + Environment.NewLine;
+            log += "      Set to: LINES & SKETCH CURVES" + Environment.NewLine;
         }
 
 
