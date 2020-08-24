@@ -44,10 +44,10 @@ namespace UCCreator
         private NXOpen.BlockStyler.Group group1;// Block type: Group
         private NXOpen.BlockStyler.Group group_SavedLists;// Block type: Group
         private NXOpen.BlockStyler.Enumeration enum_SavedLists;// Block type: Enumeration
-        private NXOpen.BlockStyler.Group group;// Block type: Group
+        private NXOpen.BlockStyler.Group group_ImportFromExcel;// Block type: Group
         private NXOpen.BlockStyler.FileSelection nativeFileBrowser0;// Block type: NativeFileBrowser'
         private NXOpen.BlockStyler.Button button_IMPORT;// Block type: Button
-        private NXOpen.BlockStyler.Enumeration enum0;// Block type: Enumeration
+        private NXOpen.BlockStyler.Enumeration enum_AFEMprocessLEVEL;// Block type: Enumeration
         private NXOpen.BlockStyler.Group group2;// Block type: Group
         private NXOpen.BlockStyler.Toggle toggle_Validator;// Block type: Toggle
         private NXOpen.BlockStyler.Button button_CREATE;// Block type: Button
@@ -284,10 +284,10 @@ namespace UCCreator
                 group1 = (NXOpen.BlockStyler.Group)theDialog.TopBlock.FindBlock("group1");
                 group_SavedLists = (NXOpen.BlockStyler.Group)theDialog.TopBlock.FindBlock("group_SavedLists");
                 enum_SavedLists = (NXOpen.BlockStyler.Enumeration)theDialog.TopBlock.FindBlock("enum_SavedLists");
-                group = (NXOpen.BlockStyler.Group)theDialog.TopBlock.FindBlock("group");
+                group_ImportFromExcel = (NXOpen.BlockStyler.Group)theDialog.TopBlock.FindBlock("group_ImportFromExcel");
                 nativeFileBrowser0 = (NXOpen.BlockStyler.FileSelection)theDialog.TopBlock.FindBlock("nativeFileBrowser0");
                 button_IMPORT = (NXOpen.BlockStyler.Button)theDialog.TopBlock.FindBlock("button_IMPORT");
-                enum0 = (NXOpen.BlockStyler.Enumeration)theDialog.TopBlock.FindBlock("enum0");
+                enum_AFEMprocessLEVEL = (NXOpen.BlockStyler.Enumeration)theDialog.TopBlock.FindBlock("enum_AFEMprocessLEVEL");
                 group2 = (NXOpen.BlockStyler.Group)theDialog.TopBlock.FindBlock("group2");
                 toggle_Validator = (NXOpen.BlockStyler.Toggle)theDialog.TopBlock.FindBlock("toggle_Validator");
                 button_CREATE = (NXOpen.BlockStyler.Button)theDialog.TopBlock.FindBlock("button_CREATE");
@@ -350,10 +350,6 @@ namespace UCCreator
                 //tree_control0.SetOnDefaultActionHandler(new NXOpen.BlockStyler.Tree.OnDefaultActionCallback(OnDefaultActionCallback));
 
                 //------------------------------------------------------------------------------
-
-
-
-                theUI.NXMessageBox.Show("TEST", NXMessageBox.DialogType.Information, "Just ran through the callback initialize_cb() !");
             }
             catch (Exception ex)
             {
@@ -393,15 +389,27 @@ namespace UCCreator
                 tree_control0.InsertColumn(3, "Maximum Connection Length [mm]", default_width);
                 tree_control0.InsertColumn(4, "Material", default_width);
 
-                // Import stored Bolt Definitions
+                // Import stored Bolt Definitions (default ones)
                 if (File.Exists(StoragePath_user))
                 {
                     ImportStoredBoltDefinitions(StoragePath_user);
+                    enum_SavedLists.ValueAsString = "Last used by you";
                 }
                 else
                 {
                     ImportStoredBoltDefinitions(StoragePath_server);
+                    enum_SavedLists.ValueAsString = "Default list";
                 }
+
+                // Collapse group of Saved Lists feature
+                group_SavedLists.Expanded = false;
+                
+                // Collapse group of Import from Excel feature
+                group_ImportFromExcel.Expanded = false;
+
+                // Set (A)FEM processing level
+                enum_AFEMprocessLEVEL.ValueAsString = "This level only";
+
 
                 // Check value of process level switch
                 UpdateProcessAll();
@@ -411,8 +419,6 @@ namespace UCCreator
 
                 // Get current working object
                 currWork = theSession.Parts.BaseWork;
-
-                theUI.NXMessageBox.Show("TEST", NXMessageBox.DialogType.Information, "Just ran through the callback dialogShown_cb() !");
             }
             catch (Exception ex)
             {
@@ -515,7 +521,7 @@ namespace UCCreator
                         ImportDefsFromExcel(nativeFileBrowser0.Path);
                     }
                 }
-                else if (block == enum0)
+                else if (block == enum_AFEMprocessLEVEL)
                 {
                     UpdateProcessAll();
                 }
@@ -1055,7 +1061,7 @@ namespace UCCreator
         /// </summary>
         private void UpdateProcessAll()
         {
-            switch (enum0.ValueAsString)
+            switch (enum_AFEMprocessLEVEL.ValueAsString)
             {
                 case "All assyFEM levels":
                     ProcessAll = true;
@@ -1069,7 +1075,7 @@ namespace UCCreator
 
                 default:
                     //theUI.NXMessageBox.Show("Selection of target (A)FEM level changed:", NXMessageBox.DialogType.Information, "NOT FOUND!" + Environment.NewLine + 
-                    //    "Set to:  " + enum0.ValueAsString);
+                    //    "Set to:  " + enum_AFEMprocessLEVEL.ValueAsString);
                     break;
             }
         }
