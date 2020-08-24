@@ -350,6 +350,10 @@ namespace UCCreator
                 //tree_control0.SetOnDefaultActionHandler(new NXOpen.BlockStyler.Tree.OnDefaultActionCallback(OnDefaultActionCallback));
 
                 //------------------------------------------------------------------------------
+
+
+
+                theUI.NXMessageBox.Show("TEST", NXMessageBox.DialogType.Information, "Just ran through the callback initialize_cb() !");
             }
             catch (Exception ex)
             {
@@ -407,6 +411,8 @@ namespace UCCreator
 
                 // Get current working object
                 currWork = theSession.Parts.BaseWork;
+
+                theUI.NXMessageBox.Show("TEST", NXMessageBox.DialogType.Information, "Just ran through the callback dialogShown_cb() !");
             }
             catch (Exception ex)
             {
@@ -939,7 +945,11 @@ namespace UCCreator
                 // Clear all existing nodes and BoltDefinition objects
                 foreach (NXOpen.BlockStyler.Node myNode in allNodes)
                 {
-                    tree_control0.DeleteNode(myNode);
+                    try
+                    {
+                        tree_control0.DeleteNode(myNode);
+                    }
+                    catch (Exception) { }
                 }
                 allNodes.Clear();
 
