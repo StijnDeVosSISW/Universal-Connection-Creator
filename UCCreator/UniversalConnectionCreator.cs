@@ -116,12 +116,27 @@ namespace UCCreator
 
                 // Get correct path to Validator dll
                 PathToValidatorExe = GetValidatorPath(targEnv);
-
+                
                 // Get environment dependent variables
                 switch (targEnv)
                 {
                     case TargEnv.Production:
-                        theDlxFileName = @"D:\NX\CAE\UBC\ABC\UniversalConnectionCreator\UniversalConnectionCreator.dlx";  // IN CPP TC environment as Production tool
+                        //theDlxFileName = @"D:\NX\CAE\UBC\ABC\UniversalConnectionCreator\UniversalConnectionCreator.dlx";  // IN CPP TC environment as Production tool
+
+                        string PLMHOST = Environment.GetEnvironmentVariable("PLMHOST");
+                        string UGII_VERSION = Environment.GetEnvironmentVariable("UGII_VERSION");
+
+                        if (PLMHOST == "")
+                        {
+                            theUI.NXMessageBox.Show("PLMHOST NOT FOUND", NXMessageBox.DialogType.Error, "Could not find PLMHOST environment variable!");
+                        }
+                        if (UGII_VERSION == "")
+                        {
+                            theUI.NXMessageBox.Show("UGII_VERSION NOT FOUND", NXMessageBox.DialogType.Error, "Could not find UGII_VERSION environment variable!");
+                        }
+
+                        theDlxFileName = PLMHOST + @"\plmshare\config\nxcustom\NX-" + UGII_VERSION + @"\site\application\UniversalConnectionCreator.dlx";
+
                         //PathToValidatorExe = @"D:\NX\CAE\UBC\ABC\UniversalConnectionValidator\UCValidator.dll";
                         targReferenceSet = "CAE";
                         break;
@@ -150,6 +165,7 @@ namespace UCCreator
                 throw ex;
             }
         }
+
         //------------------------------- DIALOG LAUNCHING ---------------------------------
         //
         //    Before invoking this application one needs to open any part/empty part in NX
