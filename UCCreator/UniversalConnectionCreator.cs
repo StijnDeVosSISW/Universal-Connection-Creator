@@ -62,6 +62,8 @@ namespace UCCreator
         private enum TargEnv { Production, Debug, Siemens };
         private static TargEnv targEnv;
 
+        private static bool IsResetMode = false;
+
         private static List<NXOpen.NXObject> allTargObjects = new List<NXObject>();
         private static List<NXOpen.NXObject> objectsToUpdate = new List<NXObject>();
 
@@ -406,15 +408,23 @@ namespace UCCreator
                 tree_control0.InsertColumn(4, "Material", default_width);
 
                 // Import stored Bolt Definitions (default ones)
-                if (File.Exists(StoragePath_user))
-                {
-                    ImportStoredBoltDefinitions(StoragePath_user);
-                    enum_SavedLists.ValueAsString = "Last used by you";
-                }
-                else
+                if (IsResetMode)
                 {
                     ImportStoredBoltDefinitions(StoragePath_server);
                     enum_SavedLists.ValueAsString = "Default list";
+                }
+                else
+                {
+                    if (File.Exists(StoragePath_user))
+                    {
+                        ImportStoredBoltDefinitions(StoragePath_user);
+                        enum_SavedLists.ValueAsString = "Last used by you";
+                    }
+                    else
+                    {
+                        ImportStoredBoltDefinitions(StoragePath_server);
+                        enum_SavedLists.ValueAsString = "Default list";
+                    }
                 }
 
                 // Collapse group of Saved Lists feature
@@ -435,6 +445,10 @@ namespace UCCreator
 
                 // Get current working object
                 currWork = theSession.Parts.BaseWork;
+
+
+                // Set Reset Mode, to indicate next time the GUI refreshes, that it is due to a Reset button click
+                IsResetMode = true;
             }
             catch (Exception ex)
             {
