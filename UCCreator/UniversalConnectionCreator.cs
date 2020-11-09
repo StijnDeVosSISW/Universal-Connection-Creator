@@ -2027,12 +2027,31 @@ namespace UCCreator
                     "   ----------------------------------" + Environment.NewLine;
                 SetNXstatusMessage(baseMsg + "   | Realizing all bolt connections' 1D elements...");
 
-                NXOpen.CAE.Connections.Element boltConnElement = isAFEM
-                    ? myAFEM.BaseFEModel.ConnectionElementCollection.Create(NXOpen.CAE.Connections.ElementType.E1DSpider, "Element - BOLT DEFINITIONS", newBoltConnections.ToArray())
-                    : myFEM.BaseFEModel.ConnectionElementCollection.Create(NXOpen.CAE.Connections.ElementType.E1DSpider, "Element - BOLT DEFINITIONS", newBoltConnections.ToArray());
+                //// Realize Bolt Conn elements in one combined (1D/2D) element object
+                //NXOpen.CAE.Connections.Element boltConnElement = isAFEM
+                //    ? myAFEM.BaseFEModel.ConnectionElementCollection.Create(NXOpen.CAE.Connections.ElementType.E1DSpider, "Element - BOLT DEFINITIONS", newBoltConnections.ToArray())
+                //    : myFEM.BaseFEModel.ConnectionElementCollection.Create(NXOpen.CAE.Connections.ElementType.E1DSpider, "Element - BOLT DEFINITIONS", newBoltConnections.ToArray());
 
-                boltConnElement.GenerateElements();
-                log += "      Elements generated" + Environment.NewLine;
+                //boltConnElement.GenerateElements();
+                //log += "      Elements generated" + Environment.NewLine;
+
+                // Realize Bolt Conn elements in multiple, individual (1D/2D) element objects
+                foreach (NXOpen.CAE.Connections.IConnection targConn in newBoltConnections)
+                {
+                    NXOpen.CAE.Connections.Element boltConnElement = isAFEM
+                    ? myAFEM.BaseFEModel.ConnectionElementCollection.Create(
+                        NXOpen.CAE.Connections.ElementType.E1DSpider, 
+                        "Conn Elem - " + targConn.Name.ToUpper(), 
+                        new NXOpen.CAE.Connections.IConnection[] { targConn })
+                    : myFEM.BaseFEModel.ConnectionElementCollection.Create(
+                        NXOpen.CAE.Connections.ElementType.E1DSpider, 
+                        "Conn Elem - " + targConn.Name.ToUpper(),
+                        new NXOpen.CAE.Connections.IConnection[] { targConn });
+
+                    boltConnElement.GenerateElements();
+                    log += "      Elements generated for Bolt Connection:  " + targConn.Name.ToUpper() + Environment.NewLine;
+                }
+                
 
 
                 log += "      REALIZATION =  success" + Environment.NewLine;
@@ -2355,7 +2374,7 @@ namespace UCCreator
                     break;
 
                 case TargEnv.Siemens:
-                    ValidatorPath = @"D:\3__TEAMCENTER\2_Projects\2_OCE_TCSimRollOut\4_Automatic_Bolt_Connections__Part_Families\UNIVERSAL CONNECTION VALIDATER\INSTALL\UniversalConnectionValidater\application\UCValidator.dll";
+                    ValidatorPath = @"D:\3__TEAMCENTER\2__Projects\2_OCE_TCSimRollOut\4_Automatic_Bolt_Connections__Part_Families\UNIVERSAL CONNECTION VALIDATER\INSTALL\UniversalConnectionValidater\application\UCValidator.dll";
                     break;
 
                 default:

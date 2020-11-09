@@ -169,6 +169,6 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>copy /Y "$(TargetPath)" "D:\3__TEAMCENTER\2_Projects\2_OCE_TCSimRollOut\4_Automatic_Bolt_Connections__Part_Families\UNIVERSAL CONNECTION CREATOR\INSTALL\UniversalConnectionCreator\application\$(TargetFileName)"</PostBuildEvent>
+    <PostBuildEvent>copy /Y "$(TargetPath)" "D:\3__TEAMCENTER\2__Projects\2_OCE_TCSimRollOut\4_Automatic_Bolt_Connections__Part_Families\UNIVERSAL CONNECTION CREATOR\INSTALL\UniversalConnectionCreator\application\$(TargetFileName)"</PostBuildEvent>
   </PropertyGroup>
 </Project>
