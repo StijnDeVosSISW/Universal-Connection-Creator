@@ -62,6 +62,8 @@ namespace UCCreator
         private enum TargEnv { Production, Debug, Siemens };
         private static TargEnv targEnv;
 
+        private enum ONorOFF { ON, OFF };
+
         private static bool IsResetMode = false;
 
         private static List<NXOpen.NXObject> allTargObjects = new List<NXObject>();
@@ -1496,6 +1498,36 @@ namespace UCCreator
                 #endregion
 
 
+                #region SET GEOMETRY OPTIONS OFF, FOR EACH FEM OBJECT
+                // ---------------------------------------------
+                // SET GEOMETRY OPTIONS OFF, FOR EACH FEM OBJECT
+                // ---------------------------------------------
+                myStopwatch.Restart();
+                log += Environment.NewLine +
+                    " ----------------------------------------------- " + Environment.NewLine +
+                    "| SET GEOMETRY OPTIONS OFF, FOR EACH FEM OBJECT |" + Environment.NewLine +
+                    " ----------------------------------------------- " + Environment.NewLine;
+                ReportService.SetTitle("SET GEOMETRY OPTIONS OFF, FOR EACH FEM OBJECT");
+
+
+                foreach (NXOpen.NXObject nXObject in allFEMobjects)
+                {
+                    NXOpen.CAE.FemPart fem = (NXOpen.CAE.FemPart)nXObject;
+
+                    SetFEMGeometryOptions(ONorOFF.OFF, fem);
+
+                    log += "   FEM: " + fem.Name + "   : Geometry Options turned OFF" + Environment.NewLine;
+                    SetNXstatusMessage("Turning off Geometry Options : FEM - " + fem.Name);
+                }
+
+
+                ReportService.ProcessErrorStack();
+
+                myStopwatch.Stop();
+                log += "[" + myStopwatch.Elapsed.TotalSeconds.ToString() + " seconds]" + Environment.NewLine;
+                ExecutionTimes.Add(myStopwatch.Elapsed.TotalSeconds);
+                #endregion
+
                 // Set initial working object to working again
                 // -------------------------------------------
                 theSession.Parts.SetWork(currWork);
@@ -1507,11 +1539,12 @@ namespace UCCreator
                 log += Environment.NewLine +
                     "DIAGNOSTICS" + Environment.NewLine +
                     "-----------" + Environment.NewLine +
-                    "CREATE LIST OF PREDEFINED BOLT CONNECTIONS =  " + ExecutionTimes[0].ToString() + " seconds" + Environment.NewLine +
-                    "GATHER ALL (A)FEM OBJECTS TO PROCESS       =  " + ExecutionTimes[1].ToString() + " seconds" + Environment.NewLine +
-                    "MAKE CAE CURVES AVAILABLE                  =  " + ExecutionTimes[2].ToString() + " seconds" + Environment.NewLine +
-                    "PROCESS EACH (A)FEM OBJECT                 =  " + ExecutionTimes[3].ToString() + " seconds" + Environment.NewLine +
-                    "UPDATE EACH (A)FEM OBJECT                  =  " + ExecutionTimes[4].ToString() + " seconds" + Environment.NewLine;
+                    "CREATE LIST OF PREDEFINED BOLT CONNECTIONS    =  " + ExecutionTimes[0].ToString() + " seconds" + Environment.NewLine +
+                    "GATHER ALL (A)FEM OBJECTS TO PROCESS          =  " + ExecutionTimes[1].ToString() + " seconds" + Environment.NewLine +
+                    "MAKE CAE CURVES AVAILABLE                     =  " + ExecutionTimes[2].ToString() + " seconds" + Environment.NewLine +
+                    "PROCESS EACH (A)FEM OBJECT                    =  " + ExecutionTimes[3].ToString() + " seconds" + Environment.NewLine +
+                    "UPDATE EACH (A)FEM OBJECT                     =  " + ExecutionTimes[4].ToString() + " seconds" + Environment.NewLine +
+                    "SET GEOMETRY OPTIONS OFF, FOR EACH FEM OBJECT =  " + ExecutionTimes[5].ToString() + " seconds" + Environment.NewLine;
             }
             catch (Exception e)
             {
@@ -2257,7 +2290,7 @@ namespace UCCreator
         /// Updates the Geometry Options of a FEM object, so that it includes Lines, Arcs & Circles, Splines, Conics and Sketch Curves
         /// </summary>
         /// <param name="targFEM">Target FEM object</param>
-        private static void SetFEMGeometryOptions(NXOpen.CAE.FemPart targFEM)
+        private static void SetFEMGeometryOptions(ONorOFF decision, NXOpen.CAE.FemPart targFEM)
         {
             //log += Environment.NewLine +
             //    "   SET GEOMETRY OPTIONS" + Environment.NewLine +
@@ -2270,26 +2303,48 @@ namespace UCCreator
 
             targFEM.GetGeometryData(out init_useBodiesOption, out init_Bodies, out init_femSynchronizeOptions);
 
-            //log += "      INITIAL bodies:  " + Environment.NewLine;
-            //foreach (NXOpen.Body body in init_Bodies)
-            //{
-            //    log += "         INITIAL Body :  " + body.Name + Environment.NewLine;
-            //}
+            ////log += "      INITIAL bodies:  " + Environment.NewLine;
+            ////foreach (NXOpen.Body body in init_Bodies)
+            ////{
+            ////    log += "         INITIAL Body :  " + body.Name + Environment.NewLine;
+            ////}
 
 
             // Create new FemSynchronizeOptions
             NXOpen.CAE.FemSynchronizeOptions targFemSynchronizeOptions = targFEM.NewFemSynchronizeOptions();
 
             // Configure FemSynchronizeOptions
-            targFemSynchronizeOptions.SynchronizePointsFlag = false;
-            targFemSynchronizeOptions.SynchronizeCoordinateSystemFlag = false;
-            targFemSynchronizeOptions.SynchronizeLinesFlag = true;
-            targFemSynchronizeOptions.SynchronizeArcsFlag = false;
-            targFemSynchronizeOptions.SynchronizeSplinesFlag = false;
-            targFemSynchronizeOptions.SynchronizeConicsFlag = false;
-            targFemSynchronizeOptions.SynchronizeSketchCurvesFlag = true;
+            switch (decision)
+            {
+                case ONorOFF.ON:
+                    targFemSynchronizeOptions.SynchronizePointsFlag = false;
+                    targFemSynchronizeOptions.SynchronizeCoordinateSystemFlag = false;
 
-            // Assign FemSynchronizeOptions in Geometry Data settings
+                    targFemSynchronizeOptions.SynchronizeLinesFlag = true;
+
+                    targFemSynchronizeOptions.SynchronizeArcsFlag = false;
+                    targFemSynchronizeOptions.SynchronizeSplinesFlag = false;
+                    targFemSynchronizeOptions.SynchronizeConicsFlag = false;
+
+                    targFemSynchronizeOptions.SynchronizeSketchCurvesFlag = true;
+                    break;
+
+                case ONorOFF.OFF:
+                    targFemSynchronizeOptions.SynchronizePointsFlag = false;
+                    targFemSynchronizeOptions.SynchronizeCoordinateSystemFlag = false;
+                    targFemSynchronizeOptions.SynchronizeLinesFlag = false;
+                    targFemSynchronizeOptions.SynchronizeArcsFlag = false;
+                    targFemSynchronizeOptions.SynchronizeSplinesFlag = false;
+                    targFemSynchronizeOptions.SynchronizeConicsFlag = false;
+                    targFemSynchronizeOptions.SynchronizeSketchCurvesFlag = false;
+                    break;
+
+                default:
+                    break;
+            }
+            
+
+            // Apply FemSynchronizeOptions in Geometry Data settings
             targFEM.SetGeometryData(NXOpen.CAE.FemPart.UseBodiesOption.VisibleBodies, init_Bodies, targFemSynchronizeOptions);
             //targFEM.SetGeometryData(NXOpen.CAE.FemPart.UseBodiesOption.VisibleBodies, visibleBodies.ToArray(), targFemSynchronizeOptions);
 
@@ -2307,10 +2362,15 @@ namespace UCCreator
             if (ReplaceReferenceSet(myFEM))
             {
                 // Make sure Geometry Options are set correctly (so that Curve objects are propagated to the FEM level)
-                SetFEMGeometryOptions(myFEM);
+                SetFEMGeometryOptions(ONorOFF.ON, myFEM);
 
                 // Restore Reference Set of underlying CAD
                 RestoreCADReferenceSet(myFEM);
+            }
+            else // Only manage Geometry Options
+            {
+                // Make sure Geometry Options are set correctly (so that Curve objects are propagated to the FEM level)
+                SetFEMGeometryOptions(ONorOFF.ON, myFEM);
             }
         }
 
